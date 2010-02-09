@@ -132,9 +132,12 @@ abstract class Mongo_Document {
   /** @var  array  flags for tracking what data is dirty */
   protected $_dirty = array();
 
-  /** @var  boolean  Is the document loaded */
-  protected $_loaded = FALSE;
+  /** @var  boolean  Is the document loaded. NULL: not attempted, FALSE: failed, TRUE: succeeded. */
+  protected $_loaded = NULL;
 
+  /** @var  array  Designated place for temporary data storage (will not be saved to the database or after sleep) */
+  public $__data = array();
+  
   /**
    * Instantiate a new Document object. If an id is passed then it will be assumed that the
    * document exists in the database and updates will be performaed without loading the document first.
@@ -222,7 +225,7 @@ abstract class Mongo_Document {
   public function clear()
   {
     $this->_object = $this->_changed = $this->_operations = $this->_dirty = array();
-    $this->_loaded = FALSE;
+    $this->_loaded = NULL;
     return $this;
   }
 
@@ -298,7 +301,7 @@ abstract class Mongo_Document {
     }
 
     // Lazy loading!
-    else if( ! $this->_loaded && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
+    else if($this->_loaded === NULL && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
     {
       $this->load();
     }
@@ -597,12 +600,15 @@ abstract class Mongo_Document {
       $array = array();
       foreach($this->_object as $name => $value)
       {
-        $array[$name] = $this->__get($name);
+        $array[$name] = isset($this->_object[$name]) ? $this->_object[$name] : NULL;
       }
-      foreach($this->_aliases as $name => $alias)
+      foreach($this->_aliases as $alias => $name)
       {
-        $array[$alias] = $array[$name];
-        unset($array[$name]);
+        if(isset($array[$name]))
+        {
+          $array[$alias] = $array[$name];
+          unset($array[$name]);
+        }
       }
     }
 
@@ -616,6 +622,10 @@ abstract class Mongo_Document {
    */
   public function loaded()
   {
+    if($this->_loaded === NULL)
+    {
+      $this->load();
+    }
     return $this->_loaded;
   }
 
@@ -687,12 +697,16 @@ abstract class Mongo_Document {
       }
     }
 
-    $values = $this->collection()->collection()->findOne($criteria,$fields);
+    $values = $this->collection()->__call('findOne', array($criteria,$fields));
 
     if($values)
     {
       $this->_loaded = TRUE;
       $this->load_values($values, TRUE);
+    }
+    else
+    {
+      $this->_loaded = FALSE;
     }
 
     return $this;
@@ -740,6 +754,7 @@ abstract class Mongo_Document {
       }
 
       // Save any additional operations
+      /** @todo  Combine operations into the insert when possible to avoid this update */
       if($this->_operations)
       {
         if( ! $this->collection()->update(array('_id' => $this->_object['_id']), $this->_operations))

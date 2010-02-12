@@ -185,7 +185,7 @@ class Mongo_Database {
 		if ( $this->profiling && ! strpos("Error",$name) && ! in_array($name, array('createDBRef','selectCollection','getGridFS')))
 		{
       $json_arguments = array_map('json_encode',$arguments);
-			$_bm = Profiler::start("Mongo_Database::{$this->_name}","$this->_db.$name(".implode(',',$json_arguments).")");
+			$_bm = Profiler::start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
 		}
 
     $retval = call_user_func_array(array($this->_db, $name), $arguments);

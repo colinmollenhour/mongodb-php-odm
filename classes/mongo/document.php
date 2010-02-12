@@ -162,6 +162,7 @@ abstract class Mongo_Document {
    * You can override this to disable alises or define your own aliasing technique.
    * 
    * @param   string  $name  The aliased field name
+   * @param   boolean $dot_allowed  Use FALSE if a dot is not allowed in the field name for better performance
    * @return  string  The field name used within the database
    */
   public function get_field_name($name, $dot_allowed = TRUE)
@@ -177,16 +178,6 @@ abstract class Mongo_Document {
     }
 
     return implode('.', array_map( array($this,'get_field_name'), explode('.',$name) ) );
-  }
-
-  /**
-   * Clones each of the fields and empty the model.
-   *
-   * @return  void
-   */
-  public function __clone()
-  {
-    $this->clear();
   }
 
   /**
@@ -561,17 +552,8 @@ abstract class Mongo_Document {
     {
       $this->before_load();
 
-      if(empty($this->_object))
-      {
-        $this->_object = $values;
-      }
-      else
-      {
-        foreach ($values as $field => $value)
-        {
-          $this->_object[$field] = $value;
-        }
-      }
+      $this->_object = (array) $values;
+      $this->_loaded = ! empty($this->_object);
 
       $this->after_load();
     }
@@ -700,19 +682,11 @@ abstract class Mongo_Document {
       }
     }
 
-    $values = $this->collection()->__call('findOne', array($criteria,$fields));
+    // Translate field aliases
+    $fields = array_map(array($this,'get_field_name'), $fields);
 
-    if($values)
-    {
-      $this->_loaded = TRUE;
-      $this->load_values($values, TRUE);
-    }
-    else
-    {
-      $this->_loaded = FALSE;
-    }
-
-    return $this;
+    $values = $this->collection()->__call('findOne', array($criteria, $fields));
+    return $this->load_values($values, TRUE);
   }
 
   /**

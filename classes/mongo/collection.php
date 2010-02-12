@@ -29,6 +29,9 @@ abstract class Mongo_Collection implements Iterator, Countable {
   /** @var  string  The class name of the corresponding document model (cached) */
   protected $_model; // Defaults to class name without _Collection
 
+  /** @var  Mongo_Document  An instance of the corresponding document model */
+  protected $_model_object;
+
   /** @var  MongoCursor  The cursor instance in use while iterating a collection */
   protected $_cursor;
 
@@ -79,7 +82,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
       if($this->db()->profiling && in_array($name,array('batchInsert','findOne','getDBRef','group','insert','remove','save','update')))
       {
         $json_arguments = array_map('json_encode',$arguments);
-        $bm = Profiler::start("Mongo_Database::$this->db","$this->name.$name(".implode(',',$json_arguments).")");
+        $bm = Profiler::start("Mongo_Database::$this->db","db.$this->name.$name(".implode(',',$json_arguments).")");
       }
 
       $return = call_user_func_array(array($this->collection(), $name), $arguments);
@@ -151,7 +154,15 @@ abstract class Mongo_Collection implements Iterator, Countable {
         $query = array($query => $value);
       }
     }
-    $this->_query = Arr::merge($this->_query,$query);
+
+    // Translate field aliases
+    $query_fields = array();
+    foreach($query as $field => $value)
+    {
+      $query_fields[$this->get_model()->get_field_name($field)] = $value;
+    }
+
+    $this->_query = Arr::merge($this->_query, $query_fields);
     return $this;
   }
 
@@ -164,7 +175,13 @@ abstract class Mongo_Collection implements Iterator, Countable {
   public function fields($fields = array())
   {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_fields = array_unique(array_merge($this->_fields,$fields));
+
+    // Translate field aliases
+    foreach($fields as $field)
+    {
+      $this->_fields[$this->get_model()->get_field_name($field)] = 1;
+    }
+
     return $this;
   }
 
@@ -256,19 +273,22 @@ abstract class Mongo_Collection implements Iterator, Countable {
   {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
 
+    if( ! isset($this->_options['sort']))
+    {
+      $this->_options['sort'] = array();
+    }
+
     if( ! is_array($fields))
     {
       $fields = array($fields => $direction);
     }
 
-    if( ! isset($this->_options['sort']))
+    // Translate field aliases
+    foreach($fields as $field => $direction)
     {
-      $this->_options['sort'] = $fields;
+      $this->_options['sort'][$this->get_model()->get_field_name($field)] = $direction;
     }
-    else
-    {
-      $this->_options['sort'] = Arr::merge($this->_options['sort'], $fields);
-    }
+
     return $this;
   }
 
@@ -315,16 +335,12 @@ abstract class Mongo_Collection implements Iterator, Countable {
    */
   public function load($skipBenchmark = FALSE)
   {
-    $this->_cursor = $this->collection()->find($this->_query,$this->_fields);
+    // Execute the query and set the options
+    $this->_cursor = $this->collection()->find($this->_query, array_keys($this->_fields));
     foreach($this->_options as $key => $value)
     {
       if($value === NULL) $this->_cursor->$key();
       else $this->_cursor->$key($value);
-    }
-
-    if( ! $this->_model)
-    {
-      $this->_model = substr(get_class($this),0,-11);
     }
 
     if($this->db()->profiling && ! $skipBenchmark)
@@ -336,6 +352,25 @@ abstract class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Get an instance of the corresponding document model.
+   *
+   * @return  Mongo_Document
+   */
+  public function get_model()
+  {
+    if( ! $this->_model_object)
+    {
+      if( ! $this->_model)
+      {
+        $this->_model = substr(get_class($this),0,-11);
+      }
+      $model = $this->_model;
+      $this->_model_object = new $model;
+    }
+    return $this->_model_object;
+  }
+
+  /**
    * Proxy method for MongoCollection::findOne, returns a corresponding Mongo_Document
    *
    * @param  array  $query
@@ -344,12 +379,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
    */
   public function findOne($query = array(), array $fields = array())
   {
-    if( ! $this->_model)
-    {
-      $this->_model = substr(get_class($this),0,-11);
-    }
-    $model_name = $this->_model;
-    $model = new $model_name;
+    $model = clone $this->get_model();
     return $model->load($query,$fields);
   }
 
@@ -471,7 +501,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
       // Profile count operation for collection
       if($this->db()->profiling)
       {
-        $bm = Profiler::start("Mongo_Database::$this->db","$this->name.count(".($query ? JSON::str($query):'').")");
+        $bm = Profiler::start("Mongo_Database::$this->db","db.$this->name.count(".($query ? JSON::str($query):'').")");
       }
 
       $count = $this->collection()->count($query);
@@ -502,8 +532,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
    */
   public function current()
   {
-    $model_class = $this->_model;
-    $model = new $model_class;
+    $model = clone $this->get_model();
     $data = $this->_cursor->current();
 
     if(isset($this->_bm))
@@ -512,8 +541,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
       unset($this->_bm);
     }
 
-    $model->load_values($data,TRUE);
-    return $model;
+    return $model->load_values($data,TRUE);
   }
 
   /**
@@ -561,8 +589,8 @@ abstract class Mongo_Collection implements Iterator, Countable {
   {
     $query = array();
     if($this->_query) $query[] = JSON::str($this->_query);
-    if($this->_fields) $query[] = JSON::str($this->_fields);
-    $query = "$this->name.find(".implode(',',$query).")";
+    if($this->_fields) $query[] = JSON::str(array_keys($this->_fields));
+    $query = "db.$this->name.find(".implode(',',$query).")";
     foreach($this->_options as $key => $value)
     {
       $query .= ".$key(".JSON::str($value).")";

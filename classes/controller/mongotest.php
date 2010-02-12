@@ -83,7 +83,6 @@ class Controller_Mongotest extends Controller {
     $this->out('BEFORE',$data);
     $doc = new Document();
     $doc->load_values($data);
-    $this->assert('document not loaded before save', $doc->loaded() === FALSE);
     $doc->save();
     $this->assert('document loaded after save', $doc->loaded() === TRUE);
     $this->out('AFTER',$doc->as_array());

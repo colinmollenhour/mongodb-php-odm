@@ -487,6 +487,17 @@ abstract class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Implement MongoCursor#getNext so that the return value is a Mongo_Document instead of array
+   *
+   * @return  Mongo_Document
+   */
+  public function getNext()
+  {
+    $this->_cursor->next();
+    return $this->current();
+  }
+
+  /**
    * Iterator: current
    */
   public function current()

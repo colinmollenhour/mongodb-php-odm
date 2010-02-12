@@ -132,6 +132,9 @@ abstract class Mongo_Document {
   /** @var  array  flags for tracking what data is dirty */
   protected $_dirty = array();
 
+  /** @var  array  reference object storage */
+  protected $_related_objects = array();
+
   /** @var  boolean  Is the document loaded. NULL: not attempted, FALSE: failed, TRUE: succeeded. */
   protected $_loaded = NULL;
 
@@ -224,7 +227,7 @@ abstract class Mongo_Document {
    */
   public function clear()
   {
-    $this->_object = $this->_changed = $this->_operations = $this->_dirty = array();
+    $this->_object = $this->_changed = $this->_operations = $this->_dirty = $this->_related_objects = array();
     $this->_loaded = NULL;
     return $this;
   }
@@ -286,12 +289,12 @@ abstract class Mongo_Document {
     // Auto-loading for special references
     if(isset($this->_references[$name]))
     {
-      if( ! isset($this->_references[$name]['object']))
+      if( ! isset($this->_related_objects[$name]))
       {
         $id_field = Arr::get($this->_references[$name], 'field', "_$name");
-        $this->_references[$name]['object'] = Mongo_Document::factory($this->_references[$name]['model'], $this->$id_field);
+        $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'], $this->$id_field);
       }
-      return $this->_references[$name]['object'];
+      return $this->_related_objects[$name];
     }
 
     // Reload when retrieving dirty data
@@ -334,7 +337,7 @@ abstract class Mongo_Document {
       {
         throw new Exception('Cannot set reference to object that is not a Mongo_Document');
       }
-      $this->_references[$name]['object'] = $value;
+      $this->_related_objects[$name] = $value;
       if(isset($value->id))
       {
         $id_field = Arr::get($this->_references[$name], 'field', "_$name");
@@ -799,17 +802,18 @@ abstract class Mongo_Document {
   {
     foreach($this->_references as $name => $ref)
     {
-      if(isset($ref['object']))
+      if(isset($this->_related_objects[$name]))
       {
-        if( ! isset($ref['object']->id))
+        $model = $this->_related_objects[$name];
+        if( ! isset($model->id) && $model->is_changed())
         {
-          $ref['object']->save($safe);
-          $name = Arr::get($this->_references[$name], 'field', "_$name");
-          $this->$name = $ref['object']->id;
+          $model->save($safe);
+          $id_field = Arr::get($this->_references[$name], 'field', "_$name");
+          $this->$id_field = $model->id;
         }
-        else if($ref['object']->is_changed())
+        else if($model->is_changed())
         {
-          $ref['object']->save($safe);
+          $model->save($safe);
         }
       }
     }

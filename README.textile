@@ -1,0 +1,54 @@
+h1. MongoDb PHP ODM
+
+~(for lack of a better title)~
+
+h2. Overview
+
+MongoDb PHP ODM is a simple object wrapper for the Mongo PHP driver classes which makes using Mongo in your PHP application more like ORM, but _without_ the suck. It is designed for use with "Kohana 3":http://github.com/kohana/core but will also integrate easily with any PHP application with almost no additional effort.
+
+h2. Design Principles
+
+* *Don't become overly complex.* There are some features that could be implemented, but if they are not it is because they would increase the complexity too much, sacrificing elegance and usability.
+* *Keep Mongo schema-less.* I like schema-less. Requiring schema's in your model definitions is not schema-less. This library let's you be schema-less.
+* *Follow Mongo driver convention.* In many ways, using this library will be pretty similar to using the official driver.
+* *Do not add unnecessary overhead.* Sure, it is not as fast as using the driver directly, but I'm quite sure you won't notice the difference.
+* *Don't Repeat Yourself.* Other than "extend Mongo_Document" and "extend Mongo_Collection", very little code will be repeated while using this library.
+* *"Row Data Gateway pattern":http://www.martinfowler.com/eaaCatalog/rowDataGateway.html* Ok ok, I didn't plan it this way, but it turns out there is a name for my design pattern. Actually it was inspired by Magento which also happens to use the Row Data Gateway pattern.
+* *Reduce the number of database requests/updates.* Prevent redundant requests and multiple updates to the same document.
+
+h2. Basic Idea
+
+The basic idea is to boil the Mongo PHP library down to three classes:
+* [[Mongo_Database]]
+* [[Mongo_Collection]]
+* [[Mongo_Document]]
+
+h3. [[Mongo_Database]]
+
+This class encapsulates the functionality of the Mongo connection and the MongoDb class into one since in most cases an application will interface with only one database. Interfacing with more than one database is still possible, but they will not share a single connection. Features afforded by this class:
+* Configurations are described with names such as 'default'. Kohana loads this configuration in the typical Kohana fashion, other frameworks can simply specify it as an argument to @Mongo_Database::instance('default',array(...))@ to set the default configuration.
+* Database names are never used in your code other than when supplying the configuration the first time. Easily deploy the same application on different database names.
+* When used with Kohana, all important database operations can easily have profiling enabled. Profiling output mimics Mongo shell syntax for easy copy/paste debugging in the shell.
+* Lazy database connections.
+
+h3. [[Mongo_Collection]]
+
+This class accomplishes the following:
+* Allows query results to be accessed as an iterator of models rather than arrays.
+* Provides the one and only location for specifying the related database configuration name and collection name for a data model.
+* Combines the functionality of MongoCollection, MongoGridFS and MongoCursor into one base class.
+* Allows query building by aggregating query parameters, cursor options, requested fields, etc..
+* When used with Kohana, all database requests can easily be profiled.
+* Debugging can be made easier by using the @__toString()@ method to get a string representing the full query, again mimicking the syntax of the MongoDb shell.
+
+h3. [[Mongo_Document]]
+
+This class objectifies a document (or row) in the database. Extend the base class for each of your data models, typically one per collection and enjoy some very simple CRUD operations with niceties like:
+* @before_*@ and @after_*@ methods for you to implement for transparently added functionality such as updating timestamps, validation, etc..
+* helpers for all of the Mongo update operations which are aggregated until the next @save()@
+* aliased field names so you can use short field names in the database and long names in the code. Take it or leave it.
+* auto-loading of referenced documents. E.g. @echo $post->user->email@
+* lazy-loading of documents and referenced documents. E.g. the above is two requests, this would only be one: @echo $post->user->id@
+
+See the wiki for more detail.
+

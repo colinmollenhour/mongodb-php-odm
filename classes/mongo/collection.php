@@ -1,4 +1,11 @@
 <?php
+/**
+ * This class works closely with Mongo_Document. When extended you must override at least the $name variable
+ * with the collection name managed by this class.
+ *
+ * @author  Colin Mollenhour
+ * @package Mongo_Database
+ */
 
 abstract class Mongo_Collection implements Iterator, Countable {
 
@@ -17,30 +24,44 @@ abstract class Mongo_Collection implements Iterator, Countable {
     return new $class;
   }
 
-  /** @var  boolean  Whether or not this collection is a gridFS collection */
+  /** Whether or not this collection is a gridFS collection
+   *  @var  boolean */
   public $gridFS;
 
-  /** @var  string  The name of the collection within the database or the gridFS prefix if gridFS is TRUE*/
+  /** The name of the collection within the database or the gridFS prefix if gridFS is TRUE
+   *  @var  string */
   public $name;
 
-  /** @var  mixed  The database configuration name (passed to Mongo_Database::instance() )*/
+  /** The database configuration name (passed to Mongo_Database::instance() )
+   *  @var  string  */
   protected $db = 'default';
 
-  /** @var  string  The class name of the corresponding document model (cached) */
+  /** The class name of the corresponding document model (cached)
+   *  @var  string */
   protected $_model; // Defaults to class name without _Collection
 
-  /** @var  Mongo_Document  An instance of the corresponding document model */
+  /** An instance of the corresponding document model
+   *  @var  Mongo_Document */
   protected $_model_object;
 
-  /** @var  MongoCursor  The cursor instance in use while iterating a collection */
+  /** The cursor instance in use while iterating a collection
+   *  @var  MongoCursor */
   protected $_cursor;
 
-  /** @var  array  The current query criteria */
+  /** The current query criteria (with field names translated)
+   *  @var  array */
   protected $_query = array();
+
+  /** The current query fields (a hash of 'field' => 1)
+   *  @var  array */
   protected $_fields = array();
+
+  /** The current query options
+   *  @var  array */
   protected $_options = array();
 
-  /**  @var  array  A cache of MongoCollection instances for performance */
+  /** A cache of MongoCollection instances for performance
+   *  @static  array */
   protected static $collections = array();
 
   /**
@@ -126,11 +147,13 @@ abstract class Mongo_Collection implements Iterator, Countable {
   /**
    * Set some criteria for the query. Unlike MongoCollection::find, this can be called multiple
    * times and the query paramters will be merged together.
-   * 
+   *
+   * <pre>
    * Usages:
    *   $query is an array
    *   $query is a field name and $value is the value to search for
    *   $query is a JSON string that will be interpreted as the query criteria
+   * </pre>
    *
    * @param   mixed $query  An array of paramters or a key
    * @param   mixed $value  If $query is a key, this is the value
@@ -465,7 +488,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
   /**
    * Countable: count
    *
-   * Count the results from the current query: pass FALSE for "all" results (disregard limit/skip)
+   * Count the results from the current query: pass FALSE for "all" results (disregard limit/skip)<br/>
    * Count results of a separate query: pass an array or JSON string of query parameters
    *
    * @param  mixed $query

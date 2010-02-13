@@ -2,15 +2,19 @@
 /**
  * This class wraps the functionality of Mongo (connection) and MongoDB (database object) into one class.
  * When used with Kohana it can be instantiated simply by:
- * 
+ *
+ * <code>
  *  $db = Mongo_Database::instance();
+ * </code>
  * 
  * The above will assume the 'default' configuration from the APPPATH/config/mongo.php file.
  * Alternatively it may be instantiated with the name and configuration specified as arguments:
- * 
+ *
+ * <code>
  *   $db = Mongo_Database::instance('test', array(
  *     'database' => 'test'
  *   ));
+ * </code>
  *
  * The Mongo_Collection class will gain access to the server by calling the instance method with a configuration name,
  * so if not using Kohana or the configuration name is not present in the config file then the instance should be created
@@ -21,24 +25,25 @@
  *
  * If using Kohana, profiling can be enabled/disabled via the configuration or on demand by setting the profiling property.
  *
- * @method public array authenticate ( string $username , string $password )
- * @method public array command ( array $data )
- * @method public MongoCollection createCollection ( string $name [, bool $capped = FALSE [, int $size = 0 [, int $max = 0 ]]] )
- * @method public array createDBRef ( mixed $ns , mixed $a )
- * @method public array drop ( void )
- * @method public array dropCollection ( mixed $coll )
- * @method public bool forceError ( void )
- * @method public array getDBRef ( array $ref )
- * @method public MongoGridFS getGridFS ([ string $arg1 = "fs" [, string $arg2 = NULL ]] )
- * @method public int getProfilingLevel ( void )
- * @method public array lastError ( void )
- * @method public array listCollections ( void )
- * @method public array prevError ( void )
- * @method public array repair ([ bool $preserve_cloned_files = FALSE [, bool $backup_original_files = FALSE ]] )
- * @method public array resetError ( void )
- * @method public MongoCollection selectCollection ( string $name )
- * @method public int setProfilingLevel ( int $level )
- * 
+ * @method array authenticate()  authenticate( string $username , string $password )
+ * @method array command()  command( array $data )
+ * @method MongoCollection createCollection()  createCollection( string $name [, bool $capped = FALSE [, int $size = 0 [, int $max = 0 ]]] )
+ * @method array createDBRef()  createDBRef( mixed $ns , mixed $a )
+ * @method array drop()  drop( void )
+ * @method array dropCollection()  dropCollection( mixed $coll )
+ * @method bool forceError()  forceError( void )
+ * @method array getDBRef()  getDBRef( array $ref )
+ * @method MongoGridFS getGridFS()  getGridFS([ string $arg1 = "fs" [, string $arg2 = NULL ]] )
+ * @method int getProfilingLevel()  getProfilingLevel( void )
+ * @method array lastError()  lastError( void )
+ * @method array listCollections()  listCollections( void )
+ * @method array prevError()  prevError( void )
+ * @method array repair()  repair([ bool $preserve_cloned_files = FALSE [, bool $backup_original_files = FALSE ]] )
+ * @method array resetError()  resetError( void )
+ * @method MongoCollection selectCollection()  selectCollection( string $name )
+ * @method int setProfilingLevel()  setProfilingLevel( int $level )
+ *
+ * @author  Colin Mollenhour
  * @package Mongo_Database
  *
  * This class was adapted from http://github.com/Wouterrr/MangoDB
@@ -46,16 +51,19 @@
 
 class Mongo_Database {
 
-	/** @static  array  Mongo_Database instances */
-	public static $instances = array();
+	/** Mongo_Database instances
+   *  @static  array */
+	protected static $instances = array();
 
   /**
    * Get a Mongo_Database instance. Configuration options are:
    *
+   * <pre>
    *  server      A server connection string. See Mongo::__construct()
    *  options     The additional options for the connection ("connect" and "persist")
    *  database    *required* The database name to use for this instance
    *  profiling   Enable/disable profiling
+   * </pre>
    *
    * @param   string $name   The configuration name
    * @param   array $config  Pass a configuration array to bypass the Kohana config
@@ -78,19 +86,24 @@ class Mongo_Database {
 		return self::$instances[$name];
 	}
 
-	/** @var  string  Mongo_Database instance name */
+	/** Mongo_Database instance name
+   *  @var  string */
 	protected $_name;
 
-	/** @var  boolean  Connection state */
+	/** Connection state
+   *  @var  boolean */
 	protected $_connected = FALSE;
 
-	/** @var  Mongo  The Mongo server connection */
+	/** The Mongo server connection
+   *  @var  Mongo */
 	protected $_connection;
 
-	/** @var  MongoDB  The database instance for the database name chosen by the config */
+	/** The database instance for the database name chosen by the config
+   *  @var  MongoDB */
 	protected $_db;
 
-  /** @var  boolean  A flag to indicate if profiling is enabled and to allow it to be enabled/disabled on the fly */
+  /** A flag to indicate if profiling is enabled and to allow it to be enabled/disabled on the fly
+   *  @var  boolean */
   public $profiling;
 
   /**

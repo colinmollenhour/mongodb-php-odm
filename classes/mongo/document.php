@@ -6,41 +6,55 @@
  * intended to contain methods which pertain to the collection as a whole (e.g. advanced queries). The most basic use of this
  * class is an empty extension, but all extensions of Mongo_Document must be accompanied by an extension of Mongo_Collection which
  * is named after the document with _Collection appended:
- * 
- *   class Document extends Mongo_Document {}
- *   class Document_Collection extends Mongo_Collection {
+ *
+ * <code>
+ *   class Model_Document extends Mongo_Document {}
+ *   class Model_Document_Collection extends Mongo_Collection {
  *     public $name = 'test';
  *   }
- *   $document = new Document();
+ *   $document = new Model_Document(); // or Mongo_Document::factory('document');
  *   $document->name = 'Mongo';
  *   $document->type = 'db';
  *   $document->save();
  *   // db.test.save({"name":"Mongo","type":"db"});
+ * </code>
  *
  * The _id is aliased to id by default. Other aliases can also be defined using the _aliases protected property. Aliases can be used
  * anywhere that a field name can be used including dot-notation for nesting.
  *
+ * <code>
  *   $id = $document->id;  // MongoId
+ * </code>
  *
+ * All methods that take query parameters support JSON strings as input in addition to PHP arrays. The JSON parser is more lenient
+ * than usual.
+ *
+ * <code>
  *   $document->load('{name:"Mongo"}');
  *   // db.test.findOne({"name":"Mongo"});
+ * </code>
  * 
  * Methods which are intended to be overridden are {before,after}_{save,load,delete} so that special actions may be
  * taken when these events occur:
  *
+ * <code>
  *   public function before_save()
  *   {
  *     $this->inc('visits');
  *     $this->last_visit = time();
  *   }
+ * </code>
  *
  * When a document is saved, update will be used if the document already exists, otherwise insert will be used, determined
  * by the presence of an _id. A document can be modified without being loaded from the database if an _id is passed to the constructor:
- * 
- *   $doc = new Document($id);
+ *
+ * <code>
+ *   $doc = new Model_Document($id);
+ * </code>
  * 
  * Atomic operations and updates are not executed until save() is called and operations are chainable. Example:
- * 
+ *
+ * <code>
  *   $doc->inc('uses.boing');
  *       ->push('used',array('type' => 'sound', 'desc' => 'boing'));
  *   $doc->inc('uses.bonk');
@@ -48,16 +62,24 @@
  *       ->save();
  *   // db.test.update(
  *   //   {"_id":"one"},
- *   //   {"$inc":{"uses.boing":1,"uses.bonk":1},"$pushAll":{"used":[{"type":"sound","desc":"boing"},{"type":"sound","desc":"bonk"}]}}
+ *   //   {"$inc":
+ *   //     {"uses.boing":1,"uses.bonk":1},
+ *   //    "$pushAll":
+ *   //     {"used":[{"type":"sound","desc":"boing"},{"type":"sound","desc":"bonk"}]}
+ *   //   }
  *   // );
+ * </code>
  *
  * Documents are loaded lazily so if a property is accessed and the document is not yet loaded, it will be loaded on the first property access:
  *
+ * <code>
  *   echo "$doc->name rocks!";
  *   // Mongo rocks!
+ * </code>
  *
  * Documents are reloaded when accessing a property that was modified with an operator and then saved:
  *
+ * <code>
  *   in_array($doc->roles,'admin');
  *   // TRUE
  *   $doc->pull('roles','admin');
@@ -66,9 +88,11 @@
  *   $doc->save();
  *   in_array($doc->roles,'admin');
  *   // FALSE
+ * </code>
  *
  * Documents can have references to other documents which will be loaded lazily and saved automatically.
  *
+ * <code>
  *   class Model_Post extends Mongo_Document {
  *     protected $_references = array('user' => array('model' => 'user'));
  *   }
@@ -91,7 +115,9 @@
  *   // "colin" - the user object was created lazily but not loaded.
  *   $post->user->email;
  *   // "colin@mollenhour.com" - now the user document was loaded as well.
+ * </code>
  *
+ * @author  Colin Mollenhour
  * @package Mongo_Database
  */
 
@@ -111,34 +137,61 @@ abstract class Mongo_Document {
     return new $class($id);
   }
 
-  /** @var  string  database collection instance cached */
-  protected $_collection;
-
-  /** @var  array  definition of references existing in this document {user: {model: 'user', field: 'user_id'} */
+  /** Definition of references existing in this document. If field is not specified it defaults
+   * to the alias used prefixed with an '_'.
+   *
+   * <pre>
+   * Example Document:
+   *  {_id:1,user_id:2,_token:3}
+   * 
+   * $_references
+   *  {user: {model: 'user', field: 'user_id'}, token: {model: 'user_token'}}
+   * </pre>
+   * 
+   *  @var  array */
   protected $_references = array();
 
-  /** @var  array  key name aliases {db_key: 'alias'} */
+  /** Field name aliases. '_id' is automatically aliased to 'id'.
+   * E.g.: {created_at: ca}
+   *  @var  array */
   protected $_aliases = array();
 
-  /** @var  array  object data */
+  /** Cached Mongo_Collection instance
+   *  @var  Mongo_Collection */
+  protected $_collection;
+
+  /** Internal storage of object data
+   *  @var  array */
   protected $_object = array();
 
-  /** @var  array  changed fields */
+  /** Keep track of fields changed using __set or load_values
+   *  @var  array */
   protected $_changed = array();
 
-  /** @var  array  set of operations to perform (not including $set) */
+  /** Set of operations to perform on update/insert
+   *  @var  array */
   protected $_operations = array();
 
-  /** @var  array  flags for tracking what data is dirty */
+  /** Keep track of data that is dirty (changed by an operation but not yet updated from database)
+   *  @var  array */
   protected $_dirty = array();
 
-  /** @var  array  reference object storage */
+  /** Storage for referenced objects
+   *  @var  array */
   protected $_related_objects = array();
 
-  /** @var  boolean  Is the document loaded. NULL: not attempted, FALSE: failed, TRUE: succeeded. */
+  /** Document loaded status:
+   * <pre>
+   *   NULL   not attempted
+   *   FALSE  failed
+   *   TRUE   succeeded
+   * </pre>
+   * 
+   *  @var  boolean */
   protected $_loaded = NULL;
 
-  /** @var  array  Designated place for temporary data storage (will not be saved to the database or after sleep) */
+  /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
+   *  @var  array */
   public $__data = array();
   
   /**
@@ -219,7 +272,7 @@ abstract class Mongo_Document {
   public function clear()
   {
     $this->_object = $this->_changed = $this->_operations = $this->_dirty = $this->_related_objects = array();
-    $this->_loaded = NULL;
+    $this->_loaded = $this->_collection = NULL;
     return $this;
   }
 
@@ -307,11 +360,13 @@ abstract class Mongo_Document {
    * Magic method for setting the value of a field. In order to set the value of a nested field,
    * you must use the "set" method, not the magic method. Examples:
    *
+   * <code>
    * // Works
    * $doc->set('address.city', 'Knoxville');
    *
    * // Does not work
    * $doc->address['city'] = 'Knoxville';
+   * </code>
    *
    * @param   string  field name
    * @param   mixed   new field value

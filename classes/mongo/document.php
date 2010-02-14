@@ -679,7 +679,7 @@ abstract class Mongo_Document {
    *
    * @param   array  specify additional criteria
    * @param   array  specify the fields to return
-   * @return  Mongo_Document
+   * @return  boolean  TRUE if the load succeeded
    */
   public function load($criteria = array(), array $fields = array())
   {
@@ -709,6 +709,11 @@ abstract class Mongo_Document {
       $criteria = $this->_object;
     }
 
+    if( ! $criteria)
+    {
+       throw new MongoException('Cannot find '.get_class($this).' without _id or other search criteria.');
+    }
+
     // If a non _id query is used, translate aliases appropriately
     if( ! isset($criteria['_id']))
     {
@@ -720,15 +725,8 @@ abstract class Mongo_Document {
       $criteria = $new;
     }
 
-    $this->clear();
-
-    if( ! $criteria)
-    {
-       throw new MongoException('Cannot find '.get_class($this).' without _id or other search criteria.');
-    }
-
     // Convert _id to a MongoId instance if applicable
-    if(isset($criteria['_id']) &&  ! $criteria['_id'] instanceof MongoId)
+    else if( ! $criteria['_id'] instanceof MongoId)
     {
       $id = new MongoId($criteria['_id']);
       if( (string) $id == $criteria['_id'])
@@ -741,7 +739,15 @@ abstract class Mongo_Document {
     $fields = array_map(array($this,'get_field_name'), $fields);
 
     $values = $this->collection()->__call('findOne', array($criteria, $fields));
-    return $this->load_values($values, TRUE);
+
+    // Only clear the object if necessary
+    if($this->_loaded !== NULL || $this->_changed || $this->_operations)
+    {
+      $this->clear();
+    }
+    
+    $this->load_values($values, TRUE);
+    return $this->_loaded;
   }
 
   /**

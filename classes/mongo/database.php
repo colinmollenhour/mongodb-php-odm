@@ -178,6 +178,17 @@ class Mongo_Database {
 	}
 
   /**
+   * Expose the MongoDb instance directly.
+   *
+   * @return  MongoDb
+   */
+  public function db()
+  {
+    $this->_connected OR $this->connect();
+    return $this->_db;
+  }
+
+  /**
    * Proxy all methods for the MongoDB class.
    * Profiles all methods that have database interaction if profiling is enabled.
    * The database connection is established lazily.
@@ -195,7 +206,7 @@ class Mongo_Database {
       throw new Exception("Method does not exist: MongoDb::$name");
     }
 
-		if ( $this->profiling && ! strpos("Error",$name) && ! in_array($name, array('createDBRef','selectCollection','getGridFS')))
+		if ( $this->profiling && ! strpos("Error",$name) && $name != 'createDBRef' )
 		{
       $json_arguments = array_map('json_encode',$arguments);
 			$_bm = Profiler::start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
@@ -230,15 +241,38 @@ class Mongo_Database {
 	}
 
   /**
+   * Get a Mongo_Collection instance (wraps MongoCollection)
+   * 
+   * @param  string  $name
+   * @return Mongo_Collection
+   */
+  public function selectCollection($name)
+  {
+    $this->_connected OR $this->connect();
+    return new Mongo_Collection($name, $this->_name);
+  }
+
+  /**
+   * Get a Mongo_Collection instance with grid FS enabled (wraps MongoCollection)
+   *
+   * @param  string  $prefix
+   * @return Mongo_Collection
+   */
+  public function getGridFS($prefix = 'fs')
+  {
+    $this->_connected OR $this->connect();
+    return new Mongo_Collection($prefix, $this->_name, TRUE);
+  }
+
+  /**
    * Fetch a collection by using object access syntax
    *
    * @param  string  $name  The collection name to select
-   * @return  MongoCollection
+   * @return  Mongo_Collection
    */
   public function __get($name)
   {
-    $this->_connected OR $this->connect();
-    return $this->_db->selectCollection($name);
+    return $this->selectCollection($name);
   }
 
 }

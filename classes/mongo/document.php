@@ -279,7 +279,7 @@ abstract class Mongo_Document {
   /**
    * Return TRUE if field has been changed
    *
-   * @param   string   field name (no parameter returns TRUE if there are *any* changes)
+   * @param   string   $name  field name (no parameter returns TRUE if there are *any* changes)
    * @return  boolean  field has been changed
    */
   public function is_changed($name = NULL)
@@ -308,10 +308,17 @@ abstract class Mongo_Document {
   /**
    * Get a corresponding collection instance
    *
+   * @param  boolean  $fresh  Pass TRUE if you don't want to re-use the cached instance
    * @return Mongo_Collection
    */
-  public function collection()
+  public function collection($fresh = FALSE)
   {
+    if($fresh === TRUE)
+    {
+      $class_name = get_class($this).'_Collection';
+      return new $class_name;
+    }
+    
     if ( ! $this->_collection)
     {
       $class_name = get_class($this).'_Collection';

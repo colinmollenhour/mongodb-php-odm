@@ -7,7 +7,7 @@
  * @package Mongo_Database
  */
 
-abstract class Mongo_Collection implements Iterator, Countable {
+class Mongo_Collection implements Iterator, Countable {
 
   const ASC = 1;
   const DESC = -1;
@@ -24,17 +24,21 @@ abstract class Mongo_Collection implements Iterator, Countable {
     return new $class;
   }
 
-  /** Whether or not this collection is a gridFS collection
-   *  @var  boolean */
-  public $gridFS;
-
   /** The name of the collection within the database or the gridFS prefix if gridFS is TRUE
    *  @var  string */
-  public $name;
+  protected $name;
 
   /** The database configuration name (passed to Mongo_Database::instance() )
    *  @var  string  */
   protected $db = 'default';
+
+  /** Whether or not this collection is a gridFS collection
+   *  @var  boolean */
+  protected $gridFS = FALSE;
+
+  /** Indicates if the Collection was instantiated for direct access or ODM access
+   *  @var  boolean */
+  protected $_direct = FALSE;
 
   /** The class name of the corresponding document model (cached)
    *  @var  string */
@@ -66,10 +70,20 @@ abstract class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Instantiate a new collection object, can be used for querying, updating, etc..
+   * 
+   * @param  string  $name  The collection name
+   * @param  string  $db    The database configuration name
+   * @param  boolean $gridFS  Is the collection a gridFS instance?
    */
-  public function __construct()
+  public function __construct($name = NULL, $db = 'default', $gridFS = FALSE)
   {
-
+    if($name !== NULL)
+    {
+      $this->db = $db;
+      $this->name = $name;
+      $this->gridFS = $gridFS;
+      $this->_direct = TRUE;
+    }
   }
 
   /**
@@ -132,14 +146,21 @@ abstract class Mongo_Collection implements Iterator, Countable {
   /**
    * Get the corresponding MongoCollection instance
    *
+   * @param  boolean  $fresh  Pass TRUE if you don't want to re-use the cached instance
    * @return  MongoCollection
    */
-  public function collection()
+  public function collection($fresh = FALSE)
   {
+    if($fresh === TRUE)
+    {
+      $selectMethod = ($this->gridFS ? 'getGridFS' : 'selectCollection');
+      return $this->db()->db()->$selectMethod($this->name);
+    }
+    
     if( ! isset(self::$collections[$this->name]))
     {
       $selectMethod = ($this->gridFS ? 'getGridFS' : 'selectCollection');
-      self::$collections[$this->name] = $this->db()->$selectMethod($this->name);
+      self::$collections[$this->name] = $this->db()->db()->$selectMethod($this->name);
     }
     return self::$collections[$this->name];
   }
@@ -182,7 +203,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
     $query_fields = array();
     foreach($query as $field => $value)
     {
-      $query_fields[$this->get_model()->get_field_name($field)] = $value;
+      $query_fields[$this->get_field_name($field)] = $value;
     }
 
     $this->_query = Arr::merge($this->_query, $query_fields);
@@ -202,7 +223,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
     // Translate field aliases
     foreach($fields as $field)
     {
-      $this->_fields[$this->get_model()->get_field_name($field)] = 1;
+      $this->_fields[$this->get_field_name($field)] = 1;
     }
 
     return $this;
@@ -309,7 +330,7 @@ abstract class Mongo_Collection implements Iterator, Countable {
     // Translate field aliases
     foreach($fields as $field => $direction)
     {
-      $this->_options['sort'][$this->get_model()->get_field_name($field)] = $direction;
+      $this->_options['sort'][$this->get_field_name($field)] = $direction;
     }
 
     return $this;
@@ -381,6 +402,11 @@ abstract class Mongo_Collection implements Iterator, Countable {
    */
   public function get_model()
   {
+    if($this->_direct)
+    {
+      throw new Exception('Cannot call get_model on a Mongo_Collection instance that was instantiated directly.');
+    }
+
     if( ! $this->_model_object)
     {
       if( ! $this->_model)
@@ -394,16 +420,18 @@ abstract class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
-   * Proxy method for MongoCollection::findOne, returns a corresponding Mongo_Document
+   * Translate a field name according to aliases defined in the model if they exist.
    *
-   * @param  array  $query
-   * @param  array  $fields
-   * @return  Mongo_Document
+   * @param  string $name
+   * @return string
    */
-  public function findOne($query = array(), array $fields = array())
+  public function get_field_name($name)
   {
-    $model = clone $this->get_model();
-    return $model->load($query,$fields);
+    if($this->_direct)
+    {
+      return $name;
+    }
+    return $this->get_model()->get_field_name($name);
   }
 
   /**
@@ -555,7 +583,6 @@ abstract class Mongo_Collection implements Iterator, Countable {
    */
   public function current()
   {
-    $model = clone $this->get_model();
     $data = $this->_cursor->current();
 
     if(isset($this->_bm))
@@ -564,6 +591,11 @@ abstract class Mongo_Collection implements Iterator, Countable {
       unset($this->_bm);
     }
 
+    if($this->_direct)
+    {
+      return $data;
+    }
+    $model = clone $this->get_model();
     return $model->load_values($data,TRUE);
   }
 

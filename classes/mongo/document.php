@@ -3,16 +3,16 @@
  * This class objectifies a Mongo document and can be used with one of the following design patterns:
  *
  * 1. Table Data Gateway pattern
- * <pre>
+ * <code>
  * class Model_Post extends Mongo_Document {
  *   protected $name = 'posts';
  *   // All model-related code here
  * }
  * $post = Mongo_Document::factory('post', $post_id);
- * </pre>
+ * </code>
  *
  * 2. Row Data Gateway pattern:
- * <pre>
+ * <code>
  * class Model_Post_Collection extends Mongo_Collection {
  *   protected $name = 'posts';
  *   // Collection-related code here
@@ -21,7 +21,7 @@
  *   // Document-related code here
  * }
  * $post = Mongo_Document::factory('post', $post_id);
- * </pre>
+ * </code>
  *
  * The following examples could be used with either pattern with no differences in usage. The Row Data Gateway pattern is recommended
  * for more complex models to improve code organization while the Table Data Gateway pattern is recommended for simpler models.

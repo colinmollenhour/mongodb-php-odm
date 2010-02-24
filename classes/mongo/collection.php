@@ -3,23 +3,23 @@
  * This class can be used in any of the following ways:
  *
  * 1. Directly as a wrapper for MongoCollection/MongoCursor:
- * <pre>
+ * <code>
  * $posts = new Mongo_Collection('posts');
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of arrays
- * </pre>
+ * </code>
  *
  * 2. As part of the Table Data Gateway pattern
- * <pre>
+ * <code>
  * class Model_Post extends Mongo_Document {
  *   protected $name = 'posts';
  *   // All model-related code here
  * }
  * $posts = Mongo_Document::factory('post')->collection(TRUE);
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
- * </pre>
+ * </code>
  *
  * 3. As part of the Row Data Gateway pattern:
- * <pre>
+ * <code>
  * class Model_Post_Collection extends Mongo_Collection {
  *   protected $name = 'posts';
  *   // Collection-related code here
@@ -29,7 +29,7 @@
  * }
  * $posts = Mongo_Document::factory('post')->collection(TRUE);
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
- * </pre>
+ * </code>
  *
  * @author  Colin Mollenhour
  * @package Mongo_Database

@@ -1,15 +1,33 @@
 <?php
 /**
- * This class objectifies a Mongo document. It must be extended with your own class and used alongside a Mongo_Collection
- * where the database configuration name and collection name are specified. Classes which extend Mongo_Document are intended
- * to contain only methods which pertain to documents (e.g. validation) whereas classes which extend Mongo_Collection are
- * intended to contain methods which pertain to the collection as a whole (e.g. advanced queries). The most basic use of this
- * class is an empty extension, but all extensions of Mongo_Document must be accompanied by an extension of Mongo_Collection which
- * is named after the document with _Collection appended:
+ * This class objectifies a Mongo document and can be used with one of the following design patterns:
+ *
+ * 1. Table Data Gateway pattern
+ * <pre>
+ * class Model_Post extends Mongo_Document {
+ *   protected $name = 'posts';
+ *   // All model-related code here
+ * }
+ * $post = Mongo_Document::factory('post', $post_id);
+ * </pre>
+ *
+ * 2. Row Data Gateway pattern:
+ * <pre>
+ * class Model_Post_Collection extends Mongo_Collection {
+ *   protected $name = 'posts';
+ *   // Collection-related code here
+ * }
+ * class Model_Post extends Mongo_Document {
+ *   // Document-related code here
+ * }
+ * $post = Mongo_Document::factory('post', $post_id);
+ * </pre>
+ *
+ * The following examples could be used with either pattern with no differences in usage. The Row Data Gateway pattern is recommended
+ * for more complex models to improve code organization while the Table Data Gateway pattern is recommended for simpler models.
  *
  * <code>
- *   class Model_Document extends Mongo_Document {}
- *   class Model_Document_Collection extends Mongo_Collection {
+ *   class Model_Document extends Mongo_Document {
  *     public $name = 'test';
  *   }
  *   $document = new Model_Document(); // or Mongo_Document::factory('document');
@@ -94,10 +112,12 @@
  *
  * <code>
  *   class Model_Post extends Mongo_Document {
+ *     protected $name = 'posts';
  *     protected $_references = array('user' => array('model' => 'user'));
  *   }
  *
  *   class Model_User extends Mongo_Document {
+ *     protected $name = 'users';
  *   }
  *
  *   $user = Mongo_Document::factory('user')->set('id','colin')->set('email','colin@mollenhour.com');
@@ -105,8 +125,8 @@
  *   $post->user = $user;
  *   $post->title = 'MongoDb';
  *   $post->save()
- *   // save({"_id":"colin","email":"colin@mollenhour.com"})
- *   // save({"_id":Object,"_user":"colin","title":"MongoDb"})
+ *   // db.users.save({"_id":"colin","email":"colin@mollenhour.com"})
+ *   // db.posts.save({"_id":Object,"_user":"colin","title":"MongoDb"})
  *
  *   $post = new Model_Post($id);
  *   $post->_user;
@@ -371,7 +391,7 @@ abstract class Mongo_Document {
     
     if($this->name)
     {
-      $name = "$this->db.$this->name";
+      $name = "$this->db.$this->name.$this->gridFS";
       if( ! isset(self::$collections[$name]))
       {
         self::$collections[$name] = new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));

@@ -12,13 +12,13 @@ h2. Design Principles
 * *Keep Mongo schema-less.* I like schema-less. Requiring schema's in your model definitions is not schema-less. This library let's you be schema-less.
 * *Follow Mongo driver convention.* In many ways, using this library will be pretty similar to using the official driver.
 * *Do not add unnecessary overhead.* Sure, it is not as fast as using the driver directly, but I'm quite sure you won't notice the difference.
-* *Don't Repeat Yourself.* Other than "extend Mongo_Document" and "extend Mongo_Collection", very little code will be repeated while using this library.
-* *"Row Data Gateway pattern":http://www.martinfowler.com/eaaCatalog/rowDataGateway.html* Ok ok, I didn't plan it this way, but it turns out there is a name for my design pattern. Actually it was inspired by Magento which also happens to use the Row Data Gateway pattern.
+* *Don't Repeat Yourself.* Very little code will be repeated while using this library.
 * *Reduce the number of database requests/updates.* Prevent redundant requests and multiple updates to the same document.
+* *Choose your favorite design pattern.* This library now supports using Mongo_Collection directly as a convenience wrapper, or choose between two ActiveRecord like patterns that resemble either the "Table Data Gateway pattern":http://www.martinfowler.com/eaaCatalog/tableDataGateway.html or the "Row Data Gateway pattern":http://www.martinfowler.com/eaaCatalog/rowDataGateway.html
 
 h2. Basic Idea
 
-The basic idea is to boil the Mongo PHP library down to three classes:
+The basic idea is to boil the usage of the Mongo PHP library down to three classes:
 * [[Mongo_Database]]
 * [[Mongo_Collection]]
 * [[Mongo_Document]]
@@ -34,8 +34,7 @@ This class encapsulates the functionality of the Mongo connection and the MongoD
 h3. [[Mongo_Collection]]
 
 This class accomplishes the following:
-* Allows query results to be accessed as an iterator of models rather than arrays.
-* Provides the one and only location for specifying the related database configuration name and collection name for a data model.
+* Allows query results to be accessed as an iterator of models rather than arrays when used in conjunction with Mongo_Document.
 * Combines the functionality of MongoCollection, MongoGridFS and MongoCursor into one base class.
 * Allows query building by aggregating query parameters, cursor options, requested fields, etc..
 * When used with Kohana, all database requests can easily be profiled.

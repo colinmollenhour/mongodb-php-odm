@@ -1,9 +1,29 @@
 <?php
-/* 
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 
+/* Row Data Gateway Pattern */
+class Model_Document_Collection extends Mongo_Collection {
+  protected $name = 'mongotest';
+  protected $db = 'mongotest';
+}
+
+class Model_Document extends Mongo_Document {
+  protected $_references = array(
+    'other' => array('model' => 'other'),
+    'lots'  => array('model' => 'other', 'field' => '_lots', 'multiple' => TRUE)
+  );
+}
+
+/* Table Data Gateway Pattern */
+class Model_Other extends Mongo_Document {
+  protected $name = 'mongotest';
+  protected $db = 'mongotest';
+
+  protected $_searches = array(
+    'docs' => array('model' => 'document', 'field' => '_other'),
+  );
+}
+
+/* Test Controller */
 class Controller_Mongotest extends Controller {
 
   protected $db;
@@ -33,6 +53,7 @@ class Controller_Mongotest extends Controller {
       $bt = array_shift($bt);
       echo "<hr/><b>{$bt['file']}: ({$bt['line']})</b><br/>";
       echo Kohana::debug_source($bt['file'], $bt['line']);
+      $this->after(TRUE);
       exit;
     }
   }
@@ -42,9 +63,11 @@ class Controller_Mongotest extends Controller {
     echo "<hr/><b>$str</b><br/>";
   }
 
-  public function out($str, $data = NULL)
+  public function out()
   {
-    echo "<pre>$str</pre>".($data ? Kohana::debug($data) : "");
+    $args = func_get_args(); $str = array_shift($args);
+    echo "<pre>$str</pre>";
+    foreach($args as $arg) echo Kohana::debug($arg);
   }
 
   public function setup()
@@ -54,13 +77,12 @@ class Controller_Mongotest extends Controller {
       'profiling' => TRUE
     ));
 
-    $this->db->dropCollection('mongotest');
     $this->db->createCollection('mongotest');
+    $this->db->mongotest->remove(array());
   }
 
   public function teardown()
   {
-    $this->db->dropCollection('mongotest');
   }
 
 
@@ -81,7 +103,7 @@ class Controller_Mongotest extends Controller {
       ),
     );
     $this->out('BEFORE',$data);
-    $doc = new Document();
+    $doc = new Model_Document();
     $doc->load_values($data);
     $doc->save();
     $this->assert('document loaded after save', $doc->loaded() === TRUE);
@@ -90,7 +112,7 @@ class Controller_Mongotest extends Controller {
 
     $this->test('RETRIEVE DOCUMENT BY _id');
     $id = $doc->id;
-    $doc = new Document($id);
+    $doc = new Model_Document($id);
     $doc->load();
     $this->assert('document found', $doc->loaded() && $doc->name == 'mongo');
 
@@ -105,7 +127,7 @@ class Controller_Mongotest extends Controller {
     $this->assert('counter incremented', $old + 1 === $doc->counter);
 
     $this->test('UPSERT NON-EXISTING DOCUMENT');
-    $doc = new Document();
+    $doc = new Model_Document();
     $doc->name = 'Bugs Bunny';
     $doc->push('friends','Daffy Duck');
     $doc->upsert();
@@ -113,7 +135,7 @@ class Controller_Mongotest extends Controller {
     $this->assert('document inserted on upsert', !empty($doc->id));
 
     $this->test('UPSERT EXISTING DOCUMENT');
-    $doc = new Document();
+    $doc = new Model_Document();
     $doc->name = 'Bugs Bunny';
     $doc->push('friends','Elmer Fudd');
     $doc->upsert();
@@ -127,10 +149,10 @@ class Controller_Mongotest extends Controller {
 
     $this->test('INSERT Document WITH _id');
     $data = array('name' => 'mongo', 'counter' => 10, 'set' => array('foo','bar','baz'));
-    $doc = new Document();
+    $doc = new Model_Document();
     $doc->id = 'test_doc';
     $doc->load_values($data)->save();
-    $doc = new Document('test_doc');
+    $doc = new Model_Document('test_doc');
     $doc->load();
     $this->assert('document found', $doc->loaded());
   }
@@ -138,7 +160,7 @@ class Controller_Mongotest extends Controller {
 
   public function action_collection()
   {
-    $col = new Document_Collection();
+    $col = Mongo_Document::factory('document')->collection();
 
     $this->test('INSERT MULTIPLE');
     $batch = array();
@@ -159,41 +181,34 @@ class Controller_Mongotest extends Controller {
 
     $col->count();
     $col->count(array('number' => array('$gt' => 10)));
-
-    
   }
 
   public function action_reference()
   {
-    $this->test('CREATE DOCUMENT WITH NESTED DOCUMENT');
-    $doc = new Document();
+    $this->test('CREATE DOCUMENT WITH REFERENCED DOCUMENT');
+    $doc = new Model_Document();
     $doc->id = 'foo';
-    $doc->nested = Mongo_Document::factory('document');
-    $doc->nested->bar = 'baz';
+    $doc->other = Mongo_Document::factory('other');
+    $doc->other->bar = 'baz';
     $doc->save();
-    $this->assert('nested document reference created', $doc->_nested);
-    $doc = new Document('foo');
-    $this->assert('nested document saved',$doc->nested->bar == 'baz');
-    $this->out('Data',$doc->collection()->as_array());
+    $this->assert('referenced document reference created', $doc->_other);
+    $doc = new Model_Document('foo');
+    $this->assert('nested document saved',$doc->other->bar == 'baz');
+
+    $this->test('SEARCH DOCUMENTS BY PREDEFINED SEARCH');
+    $docs = $doc->other->find_docs();
+    $this->assert('1 docs found', $docs->count() == 1);
+    $doc0 = $docs->getNext();
+    $this->assert('doc id is expected', $doc0->id == 'foo');
+
+    $this->test('LOAD MULTIPLE REFERENCED DOCUMENTS FROM ARRAY OF _ids');
+    for($i = 0; $i < 3; $i++){
+      $newdoc = Mongo_Document::factory('other')->load_values(array('id' => 'more'.$i, 'foo' => 'bar'.$i))->save();
+      $doc->push('_lots',$newdoc->id);
+    }
+    $doc->save();
+    $lots = $doc->lots;
+    $this->assert('found 3 referenced docs', $lots->count() == 3);
   }
 
-}
-
-class Document_Collection extends Mongo_Collection {
-  public $name = 'mongotest';
-  protected $db = 'mongotest';
-}
-
-class Document extends Mongo_Document {
-  protected $_references = array(
-    'nested' => array('model' => 'document')
-  );
-}
-
-class Model_Document_Collection extends Mongo_Collection {
-  public $name = 'mongotest';
-  protected $db = 'mongotest';
-}
-
-class Model_Document extends Mongo_Document {
 }

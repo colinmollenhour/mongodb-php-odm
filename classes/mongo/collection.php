@@ -17,11 +17,11 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   string  $name The model name to instantiate
    * @return  Mongo_Collection
+   * @deprecated
    */
   public static function factory($name)
   {
-    $class = 'Model_'.$name.'_Collection';
-    return new $class;
+    return Mongo_Document::factory($name)->collection(TRUE);
   }
 
   /** The name of the collection within the database or the gridFS prefix if gridFS is TRUE
@@ -36,17 +36,9 @@ class Mongo_Collection implements Iterator, Countable {
    *  @var  boolean */
   protected $gridFS = FALSE;
 
-  /** Indicates if the Collection was instantiated for direct access or ODM access
-   *  @var  boolean */
-  protected $_direct = FALSE;
-
-  /** The class name of the corresponding document model (cached)
-   *  @var  string */
-  protected $_model; // Defaults to class name without _Collection
-
-  /** An instance of the corresponding document model
-   *  @var  Mongo_Document */
-  protected $_model_object;
+  /** The class name or instance of the corresponding document model or NULL if direct mode
+   *  @var  mixed */
+  protected $_model;
 
   /** The cursor instance in use while iterating a collection
    *  @var  MongoCursor */
@@ -68,6 +60,10 @@ class Mongo_Collection implements Iterator, Countable {
    *  @static  array */
   protected static $collections = array();
 
+  /** A cache of Mongo_Document model instances for performance
+   *  @static  array */
+  protected static $models = array();
+
   /**
    * Instantiate a new collection object, can be used for querying, updating, etc..
    * 
@@ -75,14 +71,17 @@ class Mongo_Collection implements Iterator, Countable {
    * @param  string  $db    The database configuration name
    * @param  boolean $gridFS  Is the collection a gridFS instance?
    */
-  public function __construct($name = NULL, $db = 'default', $gridFS = FALSE)
+  public function __construct($name = NULL, $db = 'default', $gridFS = FALSE, $model = FALSE)
   {
     if($name !== NULL)
     {
       $this->db = $db;
       $this->name = $name;
       $this->gridFS = $gridFS;
-      $this->_direct = TRUE;
+    }
+    if($model)
+    {
+      $this->_model = $model;
     }
   }
 
@@ -116,7 +115,7 @@ class Mongo_Collection implements Iterator, Countable {
     {
       if($this->db()->profiling && in_array($name,array('batchInsert','findOne','getDBRef','group','insert','remove','save','update')))
       {
-        $json_arguments = array_map('json_encode',$arguments);
+        $json_arguments = array(); foreach($arguments as $arg) $json_arguments[] = json_encode((is_array($arg) ? (object)$arg : $arg));
         $bm = Profiler::start("Mongo_Database::$this->db","db.$this->name.$name(".implode(',',$json_arguments).")");
       }
 
@@ -146,23 +145,17 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Get the corresponding MongoCollection instance
    *
-   * @param  boolean  $fresh  Pass TRUE if you don't want to re-use the cached instance
    * @return  MongoCollection
    */
-  public function collection($fresh = FALSE)
+  public function collection()
   {
-    if($fresh === TRUE)
+    $name = "$this->db.$this->name.$this->gridFS";
+    if( ! isset(self::$collections[$name]))
     {
       $selectMethod = ($this->gridFS ? 'getGridFS' : 'selectCollection');
-      return $this->db()->db()->$selectMethod($this->name);
+      self::$collections[$name] = $this->db()->db()->$selectMethod($this->name);
     }
-    
-    if( ! isset(self::$collections[$this->name]))
-    {
-      $selectMethod = ($this->gridFS ? 'getGridFS' : 'selectCollection');
-      self::$collections[$this->name] = $this->db()->db()->$selectMethod($this->name);
-    }
-    return self::$collections[$this->name];
+    return self::$collections[$name];
   }
 
   /**
@@ -183,7 +176,7 @@ class Mongo_Collection implements Iterator, Countable {
   public function find($query = array(), $value = NULL)
   {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    if(is_string($query))
+    if( ! is_array($query))
     {
       if($query[0] == "{")
       {
@@ -221,9 +214,9 @@ class Mongo_Collection implements Iterator, Countable {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
 
     // Translate field aliases
-    foreach($fields as $field)
+    foreach($fields as $field => $value)
     {
-      $this->_fields[$this->get_field_name($field)] = 1;
+      $this->_fields[$this->get_field_name($field)] = $value;
     }
 
     return $this;
@@ -396,27 +389,59 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Wrapper for MongoCollection#findOne which adds field name translations and allows query to be a single _id
+   *
+   * @param  mixed  $query  An _id, a JSON encoded query or an array by which to search
+   * @param  array  $fields Fields of the results to return
+   */
+  public function findOne($query = array(), $fields = array())
+  {
+    // String query is either JSON encoded or an _id
+    if( ! is_array($query))
+    {
+      if($query[0] == "{")
+      {
+        $query = JSON::arr($query);
+        if($query === NULL)
+        {
+          throw new Exception('Unable to parse query from JSON string.');
+        }
+      }
+      else
+      {
+        $query = array('_id' => $value);
+      }
+    }
+
+    // Translate field aliases
+    $query_trans = array();
+    foreach($query as $field => $value)
+    {
+      $query_trans[$this->get_field_name($field)] = $value;
+    }
+
+    $fields_trans = array();
+    foreach($fields as $field => $value)
+    {
+      $fields_trans[$this->get_field_name($field)] = $value;
+    }
+
+    return $this->__call('findOne', array($query_trans, $fields_trans));
+  }
+
+  /**
    * Get an instance of the corresponding document model.
    *
    * @return  Mongo_Document
    */
-  public function get_model()
+  protected function get_model()
   {
-    if($this->_direct)
+    if( ! isset(self::$models[$this->_model]))
     {
-      throw new Exception('Cannot call get_model on a Mongo_Collection instance that was instantiated directly.');
-    }
-
-    if( ! $this->_model_object)
-    {
-      if( ! $this->_model)
-      {
-        $this->_model = substr(get_class($this),0,-11);
-      }
       $model = $this->_model;
-      $this->_model_object = new $model;
+      self::$models[$this->_model] = new $model;
     }
-    return $this->_model_object;
+    return self::$models[$this->_model];
   }
 
   /**
@@ -427,7 +452,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function get_field_name($name)
   {
-    if($this->_direct)
+    if( ! $this->_model)
     {
       return $name;
     }
@@ -441,10 +466,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function cursor()
   {
-    if( ! $this->_cursor)
-    {
-      $this->load();
-    }
+    $this->_cursor OR $this->load();
     return $this->_cursor;
   }
 
@@ -532,10 +554,7 @@ class Mongo_Collection implements Iterator, Countable {
         $bm = Profiler::start("Mongo_Database::$this->db","$this.count(".JSON::str($query).")");
       }
 
-      if( ! $this->_cursor)
-      {
-        $this->load(TRUE);
-      }
+      $this->_cursor OR $this->load(TRUE);
 
       $count = $this->_cursor->count($query);
     }
@@ -568,13 +587,23 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Implement MongoCursor#hasNext to ensure that the cursor is loaded
+   *
+   * @return  Mongo_Document
+   */
+  public function hasNext()
+  {
+    return $this->cursor()->hasNext();
+  }
+
+  /**
    * Implement MongoCursor#getNext so that the return value is a Mongo_Document instead of array
    *
    * @return  Mongo_Document
    */
   public function getNext()
   {
-    $this->_cursor->next();
+    $this->cursor()->next();
     return $this->current();
   }
 
@@ -591,7 +620,7 @@ class Mongo_Collection implements Iterator, Countable {
       unset($this->_bm);
     }
 
-    if($this->_direct)
+    if( ! $this->_model)
     {
       return $data;
     }
@@ -620,11 +649,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function rewind()
   {
-    if( ! $this->_cursor)
-    {
-      $this->load();
-    }
-    $this->_cursor->rewind();
+    $this->cursor()->rewind();
   }
 
   /**

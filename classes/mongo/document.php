@@ -128,14 +128,35 @@ abstract class Mongo_Document {
    * The document is not loaded until load() is called.
    *
    * @param   string  model name
-   * @param   string  optional _id of document to operate on (if you expect it exists)
+   * @param   mixed   optional _id of document to operate on or criteria for loading (if you expect it exists)
    * @return  Mongo_Document
    */
-  public static function factory($name, $id = NULL)
+  public static function factory($name, $load = NULL)
   {
     $class = 'Model_'.$name;
-    return new $class($id);
+    return new $class($load);
   }
+
+  /** The name of the collection within the database or the gridFS prefix if gridFS is TRUE
+   *
+   *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
+   *
+   *  @var  string */
+  protected $name;
+
+  /** The database configuration name (passed to Mongo_Database::instance() )
+   *
+   *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
+   *
+   *  @var  string */
+  protected $db = 'default';
+
+  /** Whether or not this collection is a gridFS collection
+   *
+   *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
+   *
+   *  @var  boolean */
+  protected $gridFS = FALSE;
 
   /** Definition of references existing in this document. If field is not specified it defaults
    * to the alias used prefixed with an '_'.
@@ -151,14 +172,26 @@ abstract class Mongo_Document {
    *  @var  array */
   protected $_references = array();
 
+  /** Definition of predefined searches for use with __call. This instantiates a collection for the target model
+   * and initializes the search with the specified field being equal to the _id of the current object.
+   * 
+   * <pre>
+   * $_searches
+   *  {events: {model: 'event', field: '_user'}}
+   * // db.event.find({_user: <_id>})
+   * </pre>
+   * 
+   * @var  array */
+  protected $_searches = array();
+
   /** Field name aliases. '_id' is automatically aliased to 'id'.
    * E.g.: {created_at: ca}
    *  @var  array */
   protected $_aliases = array();
 
-  /** Cached Mongo_Collection instance
-   *  @var  Mongo_Collection */
-  protected $_collection;
+  /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
+   *  @var  array */
+  public $__data = array();
 
   /** Internal storage of object data
    *  @var  array */
@@ -190,22 +223,32 @@ abstract class Mongo_Document {
    *  @var  boolean */
   protected $_loaded = NULL;
 
-  /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
-   *  @var  array */
-  public $__data = array();
-  
+  /** A cache of Mongo_Collection instances for performance
+   *  @static  array */
+  protected static $collections = array();
+
   /**
-   * Instantiate a new Document object. If an id is passed then it will be assumed that the
+   * Instantiate a new Document object. If an id or other data is passed then it will be assumed that the
    * document exists in the database and updates will be performaed without loading the document first.
    *
-   * @param   string  The _id of the document to operate on
+   * @param   string  The _id of the document to operate on or criteria used to load
    * @return  void
    */
   public function __construct($id = NULL)
   {
-    if($id)
+    if($id !== NULL)
     {
-      $this->_object['_id'] = $id;
+      if(is_array($id))
+      {
+        foreach($id as $key => $value)
+        {
+          $this->_object[$this->get_field_name($key)] = $value;
+        }
+      }
+      else
+      {
+        $this->_object['_id'] = $id;
+      }
     }
   }
 
@@ -220,7 +263,7 @@ abstract class Mongo_Document {
    */
   public function get_field_name($name, $dot_allowed = TRUE)
   {
-    if($name == 'id') return '_id';
+    if($name == 'id' || $name == '_id') return '_id';
 
     if( ! $dot_allowed || ! strpos($name,'.'))
     {
@@ -272,7 +315,7 @@ abstract class Mongo_Document {
   public function clear()
   {
     $this->_object = $this->_changed = $this->_operations = $this->_dirty = $this->_related_objects = array();
-    $this->_loaded = $this->_collection = NULL;
+    $this->_loaded = NULL;
     return $this;
   }
 
@@ -306,29 +349,87 @@ abstract class Mongo_Document {
   }
 
   /**
-   * Get a corresponding collection instance
+   * Get a corresponding collection singleton
    *
-   * @param  boolean  $fresh  Pass TRUE if you don't want to re-use the cached instance
+   * @param  boolean  $fresh  Pass TRUE if you don't want to get the singleton instance
    * @return Mongo_Collection
    */
   public function collection($fresh = FALSE)
   {
     if($fresh === TRUE)
     {
-      $class_name = get_class($this).'_Collection';
-      return new $class_name;
+      if($this->name)
+      {
+        return new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));
+      }
+      else
+      {
+        $class_name = get_class($this).'_Collection';
+        return new $class_name(NULL, NULL, NULL, get_class($this));
+      }
     }
     
-    if ( ! $this->_collection)
+    if($this->name)
     {
-      $class_name = get_class($this).'_Collection';
-      $this->_collection = new $class_name;
+      $name = "$this->db.$this->name";
+      if( ! isset(self::$collections[$name]))
+      {
+        self::$collections[$name] = new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));
+      }
+      return self::$collections[$name];
     }
-    return $this->_collection;
+    else
+    {
+      $name = get_class($this).'_Collection';
+      if( ! isset(self::$collections[$name]))
+      {
+        self::$collections[$name] = new $name(NULL, NULL, NULL, get_class($this));
+      }
+      return self::$collections[$name];
+    }
   }
 
   /**
-   * Get the value of a field.
+   * Current magic methods supported:
+   *
+   *  find_<search>()  -  Perform predefined search (using key from $_searches)
+   *
+   * @param  string $name
+   * @param  array  $arguments
+   * @return Mongo_Collection
+   */
+  public function __call($name, $arguments)
+  {
+    $parts = explode('_', $name, 2);
+    if( ! isset($parts[1]))
+    {
+      trigger_error('Method not found by '.get_class($this).': '.$name);
+    }
+
+    switch($parts[0])
+    {
+      case 'find':
+        $search = $parts[1];
+        if( ! isset($this->_searches[$search])){
+          trigger_error('Predefined search not found by '.get_class($this).': '.$search);
+        }
+        return Mongo_Document::factory($this->_searches[$search]['model'])
+                ->collection(TRUE)
+                ->find(array($this->_searches[$search]['field'] => $this->_id));
+      break;
+
+      default:
+        trigger_error('Method not found by '.get_class($this).': '.$name);
+      break;
+    }
+  }
+
+  /**
+   * Gets one of the following:
+   *
+   *  - A referenced object
+   *  - A search() result
+   *  - A field's value
    *
    * @param   string  field name
    * @return  mixed
@@ -343,7 +444,17 @@ abstract class Mongo_Document {
       if( ! isset($this->_related_objects[$name]))
       {
         $id_field = Arr::get($this->_references[$name], 'field', "_$name");
-        $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'], $this->$id_field);
+        $value = $this->__get($id_field);
+        if( ! empty($this->_references[$name]['multiple']))
+        {
+          $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'])
+                  ->collection(TRUE)
+                  ->find(array('_id' => array('$in' => (array) $value)));
+        }
+        else
+        {
+          $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'], $value);
+        }
       }
       return $this->_related_objects[$name];
     }
@@ -391,10 +502,10 @@ abstract class Mongo_Document {
         throw new Exception('Cannot set reference to object that is not a Mongo_Document');
       }
       $this->_related_objects[$name] = $value;
-      if(isset($value->id))
+      if(isset($value->_id))
       {
         $id_field = Arr::get($this->_references[$name], 'field', "_$name");
-        $this->$id_field = $value->id;
+        $this->__set($id_field, $value->_id);
       }
       return;
     }
@@ -485,6 +596,8 @@ abstract class Mongo_Document {
     {
       $this->_operations['$pushAll'][$name] = array($this->_operations['$push'][$name],$value);
       unset($this->_operations['$push'][$name]);
+      if( ! count($this->_operations['$push']))
+        unset($this->_operations['$push']);
     }
     else
     {
@@ -558,6 +671,8 @@ abstract class Mongo_Document {
     {
       $this->_operations['$pullAll'][$name] = array($this->_operations['$pull'][$name],$value);
       unset($this->_operations['$pull'][$name]);
+      if( ! count($this->_operations['$pull']))
+        unset($this->_operations['$pull']);
     }
     else
     {
@@ -733,7 +848,7 @@ abstract class Mongo_Document {
     }
 
     // Convert _id to a MongoId instance if applicable
-    else if( ! $criteria['_id'] instanceof MongoId)
+    else if( is_string($criteria['_id']) && ! $criteria['_id'] instanceof MongoId && strlen($criteria['_id']) == 24)
     {
       $id = new MongoId($criteria['_id']);
       if( (string) $id == $criteria['_id'])
@@ -844,14 +959,14 @@ abstract class Mongo_Document {
   {
     foreach($this->_references as $name => $ref)
     {
-      if(isset($this->_related_objects[$name]))
+      if(isset($this->_related_objects[$name]) && $this->_related_objects[$name] instanceof Mongo_Document)
       {
         $model = $this->_related_objects[$name];
-        if( ! isset($model->id) && $model->is_changed())
+        if( ! isset($model->_id) && $model->is_changed())
         {
           $model->save($safe);
           $id_field = Arr::get($this->_references[$name], 'field', "_$name");
-          $this->$id_field = $model->id;
+          $this->__set($id_field, $model->_id);
         }
         else if($model->is_changed())
         {

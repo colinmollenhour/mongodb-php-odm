@@ -208,7 +208,7 @@ class Mongo_Database {
 
 		if ( $this->profiling && ! strpos("Error",$name) && $name != 'createDBRef' )
 		{
-      $json_arguments = array_map('json_encode',$arguments);
+      $json_arguments = array(); foreach($arguments as $arg) $json_arguments[] = json_encode((is_array($arg) ? (object)$arg : $arg));
 			$_bm = Profiler::start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
 		}
 

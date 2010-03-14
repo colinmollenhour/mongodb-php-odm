@@ -410,7 +410,7 @@ class Mongo_Collection implements Iterator, Countable {
 
     if($this->db()->profiling && ! $skipBenchmark)
     {
-      $this->_bm = Profiler::start("Mongo_Database::$this->db",$this->__toString());
+      $this->_bm = Profiler::start("Mongo_Database::$this->db",$this->inspect());
     }
 
     return $this;
@@ -518,7 +518,7 @@ class Mongo_Collection implements Iterator, Countable {
 
     else
     {
-      foreach($this->_cursor as $key => $value)
+      foreach($this->cursor() as $key => $value)
       {
         $array[$key] = $value;
       }
@@ -544,7 +544,7 @@ class Mongo_Collection implements Iterator, Countable {
 
     $list = array();
 
-    foreach($this->_cursor as $data)
+    foreach($this->cursor() as $data)
     {
       if($key !== NULL)
       {
@@ -579,7 +579,7 @@ class Mongo_Collection implements Iterator, Countable {
       // Profile count operation for cursor
       if($this->db()->profiling)
       {
-        $bm = Profiler::start("Mongo_Database::$this->db","$this.count(".JSON::str($query).")");
+        $bm = Profiler::start("Mongo_Database::$this->db",$this->inspect().".count(".JSON::str($query).")");
       }
 
       $this->_cursor OR $this->load(TRUE);
@@ -693,7 +693,7 @@ class Mongo_Collection implements Iterator, Countable {
    * 
    * @return  string
    */
-  public function __toString()
+  public function inspect()
   {
     $query = array();
     if($this->_query) $query[] = JSON::str($this->_query);
@@ -704,6 +704,16 @@ class Mongo_Collection implements Iterator, Countable {
       $query .= ".$key(".JSON::str($value).")";
     }
     return $query;
+  }
+
+  /**
+   * Return the collection name
+   *
+   * @return string
+   */
+  public function  __toString()
+  {
+    return $this->name;
   }
 
 }

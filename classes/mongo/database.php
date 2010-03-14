@@ -136,7 +136,13 @@ class Mongo_Database {
 
 	final public function __destruct()
 	{
-		$this->close();
+    try {
+      $this->close();
+      $this->_connection = NULL;
+      $this->_connected = FALSE;
+    } catch(Exception $e) {
+      // can't throw exceptions in __destruct
+    }
 	}
 
   /**
@@ -166,15 +172,17 @@ class Mongo_Database {
 
   /**
    * Close the connection to Mongo
+   *
+   * @return  boolean  if the connection was successfully closed
    */
 	public function close()
 	{
-		if ( $this->_connection)
+		if ($this->_connected)
 		{
-			$this->_connection->close();
-  		$this->_db = $this->_connection = NULL;
+			$this->_connected = $this->_connection->close();
+  		$this->_db = NULL;
 		}
-    unset(self::$instances[$this->_name]);
+    return $this->_connected;
 	}
 
   /**

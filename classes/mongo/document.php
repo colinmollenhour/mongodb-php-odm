@@ -267,8 +267,31 @@ abstract class Mongo_Document {
       }
       else
       {
-        $this->_object['_id'] = $id;
+        $this->_object['_id'] = $this->_cast('_id', $id);
       }
+    }
+  }
+
+  /**
+   * Override to cast values when they are set with untrusted data
+   *
+   * @param  string  $field  The field name being set
+   * @param  mixed  $value  The value being set
+   */
+  protected function _cast($field, $value)
+  {
+    switch($field)
+    {
+      case '_id':
+        // Cast _id strings to MongoIds if they convert back and forth without changing
+        if( is_string($value) && strlen($value) == 24)
+        {
+          $id = new MongoId($value);
+          if( (string) $id == $value)
+            return $id;
+        }
+      default:
+        return $value;
     }
   }
 
@@ -536,7 +559,7 @@ abstract class Mongo_Document {
       return;
     }
 
-    $this->_object[$name] = $value;
+    $this->_object[$name] = $this->_cast($name, $value);
     $this->_changed[$name] = TRUE;
   }
 
@@ -856,26 +879,14 @@ abstract class Mongo_Document {
        throw new MongoException('Cannot find '.get_class($this).' without _id or other search criteria.');
     }
 
-    // If a non _id query is used, translate aliases appropriately
-    if( ! isset($criteria['_id']))
+    // Cast query values to the appropriate types and translate aliases
+    $new = array();
+    foreach($criteria as $key => $value)
     {
-      $new = array();
-      foreach($criteria as $key => $value)
-      {
-        $new[$this->get_field_name($key)] = $value;
-      }
-      $criteria = $new;
+      $key = $this->get_field_name($key);
+      $new[$key] = $this->_cast($key, $value);
     }
-
-    // Convert _id to a MongoId instance if applicable
-    else if( is_string($criteria['_id']) && ! $criteria['_id'] instanceof MongoId && strlen($criteria['_id']) == 24)
-    {
-      $id = new MongoId($criteria['_id']);
-      if( (string) $id == $criteria['_id'])
-      {
-        $criteria['_id'] = $id;
-      }
-    }
+    $criteria = $new;
 
     // Translate field aliases
     $fields = array_map(array($this,'get_field_name'), $fields);

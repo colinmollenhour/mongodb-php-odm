@@ -94,7 +94,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Instantiate a new collection object, can be used for querying, updating, etc..
-   * 
+   *
    * @param  string  $name  The collection name
    * @param  string  $db    The database configuration name
    * @param  boolean $gridFS  Is the collection a gridFS instance?
@@ -138,7 +138,7 @@ class Mongo_Collection implements Iterator, Countable {
     {
       return call_user_func_array(array($this->_cursor, $name), $arguments);
     }
- 
+
     if(method_exists($this->collection(),$name))
     {
       if($this->db()->profiling && in_array($name,array('batchInsert','findOne','getDBRef','group','insert','remove','save','update')))
@@ -227,7 +227,7 @@ class Mongo_Collection implements Iterator, Countable {
       $query_fields[$this->get_field_name($field)] = $value;
     }
 
-    $this->_query = Arr::merge($this->_query, $query_fields);
+    $this->_query = self::array_merge_recursive_distinct($this->_query, $query_fields);
     return $this;
   }
 
@@ -421,6 +421,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  mixed  $query  An _id, a JSON encoded query or an array by which to search
    * @param  array  $fields Fields of the results to return
+   * @return mixed  Record matching query or NULL
    */
   public function findOne($query = array(), $fields = array())
   {
@@ -596,6 +597,13 @@ class Mongo_Collection implements Iterator, Countable {
           throw new Exception('Unable to parse query from JSON string.');
         }
       }
+      $query_trans = array();
+      foreach($query as $field => $value)
+      {
+        $query_trans[$this->get_field_name($field)] = $value;
+      }
+      $query = $query_trans;
+
       // Profile count operation for collection
       if($this->db()->profiling)
       {
@@ -690,7 +698,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Return a string representation of the full query (in Mongo shell syntax)
-   * 
+   *
    * @return  string
    */
   public function inspect()
@@ -714,6 +722,33 @@ class Mongo_Collection implements Iterator, Countable {
   public function  __toString()
   {
     return $this->name;
+  }
+
+  /**
+   * array_merge_recursive_distinct does not change the datatypes of the values in the arrays.
+   * @param array $array1
+   * @param array $array2
+   * @return array
+   * @author Daniel <daniel (at) danielsmedegaardbuus (dot) dk>
+   * @author Gabriel Sobrinho <gabriel (dot) sobrinho (at) gmail (dot) com>
+   */
+  protected static function array_merge_recursive_distinct ( array &$array1, array &$array2 )
+  {
+    $merged = $array1;
+
+    foreach ( $array2 as $key => &$value )
+    {
+      if ( is_array ( $value ) && isset ( $merged [$key] ) && is_array ( $merged [$key] ) )
+      {
+        $merged [$key] = self::array_merge_recursive_distinct ( $merged [$key], $value );
+      }
+      else
+      {
+        $merged [$key] = $value;
+      }
+    }
+
+    return $merged;
   }
 
 }

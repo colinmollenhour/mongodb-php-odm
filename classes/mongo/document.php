@@ -51,7 +51,7 @@
  *   $document->load('{name:"Mongo"}');
  *   // db.test.findOne({"name":"Mongo"});
  * </code>
- * 
+ *
  * Methods which are intended to be overridden are {before,after}_{save,load,delete} so that special actions may be
  * taken when these events occur:
  *
@@ -69,7 +69,7 @@
  * <code>
  *   $doc = new Model_Document($id);
  * </code>
- * 
+ *
  * Atomic operations and updates are not executed until save() is called and operations are chainable. Example:
  *
  * <code>
@@ -153,7 +153,7 @@ abstract class Mongo_Document {
    */
   public static function factory($name, $load = NULL)
   {
-    $class = 'Model_'.$name;
+    $class = 'Model_'.implode('_',array_map('ucfirst', explode('_',$name)));
     return new $class($load);
   }
 
@@ -178,29 +178,32 @@ abstract class Mongo_Document {
    *  @var  boolean */
   protected $gridFS = FALSE;
 
-  /** Definition of references existing in this document. If field is not specified it defaults
-   * to the alias used prefixed with an '_'.
+  /** Definition of references existing in this document.
+   * If 'model' is not specified it defaults to the reference name.
+   * If 'field' is not specified it defaults to the reference name prefixed with an '_'.
    *
    * <pre>
    * Example Document:
    *  {_id:1,user_id:2,_token:3}
-   * 
-   * $_references
-   *  {user: {model: 'user', field: 'user_id'}, token: {model: 'user_token'}}
+   *
+   * protected $_references = array(
+   *  'user' => array('model' => 'user', 'field' => 'user_id'),
+   *  'token' => NULL,
+   * );
    * </pre>
-   * 
+   *
    *  @var  array */
   protected $_references = array();
 
   /** Definition of predefined searches for use with __call. This instantiates a collection for the target model
    * and initializes the search with the specified field being equal to the _id of the current object.
-   * 
+   *
    * <pre>
    * $_searches
    *  {events: {model: 'event', field: '_user'}}
    * // db.event.find({_user: <_id>})
    * </pre>
-   * 
+   *
    * @var  array */
   protected $_searches = array();
 
@@ -239,7 +242,7 @@ abstract class Mongo_Document {
    *   FALSE  failed
    *   TRUE   succeeded
    * </pre>
-   * 
+   *
    *  @var  boolean */
   protected $_loaded = NULL;
 
@@ -299,7 +302,7 @@ abstract class Mongo_Document {
    * This function translates an alias to a database field name.
    * Aliases are defined in $this->_aliases, and id is always aliased to _id.
    * You can override this to disable alises or define your own aliasing technique.
-   * 
+   *
    * @param   string  $name  The aliased field name
    * @param   boolean $dot_allowed  Use FALSE if a dot is not allowed in the field name for better performance
    * @return  string  The field name used within the database
@@ -411,7 +414,7 @@ abstract class Mongo_Document {
         return new $class_name(NULL, NULL, NULL, get_class($this));
       }
     }
-    
+
     if($this->name)
     {
       $name = "$this->db.$this->name.$this->gridFS";
@@ -482,21 +485,22 @@ abstract class Mongo_Document {
     $name = $this->get_field_name($name, FALSE);
 
     // Auto-loading for special references
-    if(isset($this->_references[$name]))
+    if(array_key_exists($name, $this->_references))
     {
       if( ! isset($this->_related_objects[$name]))
       {
-        $id_field = Arr::get($this->_references[$name], 'field', "_$name");
+        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
+        $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
         $value = $this->__get($id_field);
         if( ! empty($this->_references[$name]['multiple']))
         {
-          $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'])
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
                   ->collection(TRUE)
                   ->find(array('_id' => array('$in' => (array) $value)));
         }
         else
         {
-          $this->_related_objects[$name] = Mongo_Document::factory($this->_references[$name]['model'], $value);
+          $this->_related_objects[$name] = Mongo_Document::factory($model, $value);
         }
       }
       return $this->_related_objects[$name];
@@ -538,7 +542,7 @@ abstract class Mongo_Document {
     $name = $this->get_field_name($name, FALSE);
 
     // Automatically save references to other Mongo_Document objects
-    if(isset($this->_references[$name]))
+    if(array_key_exists($name, $this->_references))
     {
       if( ! $value instanceof Mongo_Document)
       {
@@ -547,19 +551,20 @@ abstract class Mongo_Document {
       $this->_related_objects[$name] = $value;
       if(isset($value->_id))
       {
-        $id_field = Arr::get($this->_references[$name], 'field', "_$name");
+        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $this->__set($id_field, $value->_id);
       }
       return;
     }
 
     // Do not save sets that result in no change
+    $value = $this->_cast($name, $value);
     if ( isset($this->_object[$name]) && $this->_object[$name] === $value)
     {
       return;
     }
 
-    $this->_object[$name] = $this->_cast($name, $value);
+    $this->_object[$name] = $value;
     $this->_changed[$name] = TRUE;
   }
 
@@ -784,7 +789,7 @@ abstract class Mongo_Document {
         $this->__set($field, $value);
       }
     }
-    
+
     return $this;
   }
 
@@ -898,7 +903,7 @@ abstract class Mongo_Document {
     {
       $this->clear();
     }
-    
+
     $this->load_values($values, TRUE);
     return $this->_loaded;
   }
@@ -913,7 +918,7 @@ abstract class Mongo_Document {
   {
     // Save changes to or create referenced objects
     $this->save_references($safe);
-    
+
     // Insert new record if no _id or _id was set by user
     if( ! isset($this->_object['_id']) || isset($this->_changed['_id']))
     {
@@ -982,7 +987,7 @@ abstract class Mongo_Document {
     $this->_changed = $this->_operations = array();
 
     $this->after_save();
-    
+
     return $this;
   }
 
@@ -993,15 +998,14 @@ abstract class Mongo_Document {
       if(isset($this->_related_objects[$name]) && $this->_related_objects[$name] instanceof Mongo_Document)
       {
         $model = $this->_related_objects[$name];
-        if( ! isset($model->_id) && $model->is_changed())
+        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
+        if($model->is_changed())
         {
           $model->save($safe);
-          $id_field = Arr::get($this->_references[$name], 'field', "_$name");
-          $this->__set($id_field, $model->_id);
         }
-        else if($model->is_changed())
+        if( ! $this->__isset($id_field) || $this->$id_field != $model->_id)
         {
-          $model->save($safe);
+          $this->__set($id_field, $model->_id);
         }
       }
     }
@@ -1054,7 +1058,7 @@ abstract class Mongo_Document {
 
     $this->before_save('upsert');
 
-    $operations = Arr::merge($this->_operations, $operations);
+    $operations = self::array_merge_recursive_distinct($this->_operations, $operations);
 
     if( ! $this->collection()->update($this->_object, $operations, array('upsert' => TRUE)))
     {
@@ -1093,6 +1097,33 @@ abstract class Mongo_Document {
     $this->after_delete();
 
     return $this;
+  }
+
+  /**
+   * array_merge_recursive_distinct does not change the datatypes of the values in the arrays.
+   * @param array $array1
+   * @param array $array2
+   * @return array
+   * @author Daniel <daniel (at) danielsmedegaardbuus (dot) dk>
+   * @author Gabriel Sobrinho <gabriel (dot) sobrinho (at) gmail (dot) com>
+   */
+  protected static function array_merge_recursive_distinct ( array &$array1, array &$array2 )
+  {
+    $merged = $array1;
+
+    foreach ( $array2 as $key => &$value )
+    {
+      if ( is_array ( $value ) && isset ( $merged [$key] ) && is_array ( $merged [$key] ) )
+      {
+        $merged [$key] = self::array_merge_recursive_distinct ( $merged [$key], $value );
+      }
+      else
+      {
+        $merged [$key] = $value;
+      }
+    }
+
+    return $merged;
   }
 
 }

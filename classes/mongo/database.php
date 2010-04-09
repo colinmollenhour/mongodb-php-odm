@@ -117,12 +117,18 @@ class Mongo_Database {
 		$this->_name = $name;
 
     // Setup connection options merged over the defaults and store the connection
-		$options = Arr::merge(array(
-        'connect' => FALSE  // Do not connect yet
-      ),
-      Arr::get($config, 'options', array())
+    $options = array(
+      'connect' => FALSE  // Do not connect yet
     );
-    $this->_connection = new Mongo(Arr::get($config, 'server', "mongodb://".ini_get('mongo.default_host').":".ini_get('mongo.default_port')), $options);
+    if(isset($config['options']))
+      $options = array_merge($options, $config['options']);
+
+    // Use the default server string if no server option is given
+    $server = isset($config['server'])
+                ? $config['server']
+                : "mongodb://".ini_get('mongo.default_host').":".ini_get('mongo.default_port');
+
+    $this->_connection = new Mongo($server, $options);
     
     // Save the database name for later use
     $this->_db = $config['database'];

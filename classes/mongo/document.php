@@ -319,7 +319,9 @@ abstract class Mongo_Document {
       );
     }
 
-    return implode('.', array_map( array($this,'get_field_name'), explode('.',$name) ) );
+    $parts = explode('.', $name, 2);
+    $parts[0] = $this->get_field_name($parts[0], FALSE);
+    return implode('.', $parts);
   }
 
   /**
@@ -760,6 +762,41 @@ abstract class Mongo_Document {
   {
     $name = $this->get_field_name($name);
     $this->_operations['$bit'][$name] = $value;
+    return $this->_set_dirty($name);
+  }
+
+  /**
+   * Adds value to the array only if its not in the array already.
+   *
+   * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   mixed   $value  The value to add to the set
+   * @return  Mongo_Document
+   */
+  public function addToSet($name, $value)
+  {
+    $name = $this->get_field_name($name);
+    if(isset($this->_operations['$addToSet'][$name]))
+    {
+      if( ! isset($this->_operations['$addToSet'][$name]['$each']))
+      {
+        $this->_operations['$addToSet'][$name] = array('$each' => array($this->_operations['$addToSet'][$name]));
+      }
+      if(isset($value['$each']))
+      {
+        foreach($value['$each'] as $val)
+        {
+          $this->_operations['$addToSet'][$name]['$each'][] = $val;
+        }
+      }
+      else
+      {
+        $this->_operations['$addToSet'][$name]['$each'][] = $value;
+      }
+    }
+    else
+    {
+      $this->_operations['$addToSet'][$name] = $value;
+    }
     return $this->_set_dirty($name);
   }
 

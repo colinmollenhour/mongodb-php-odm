@@ -171,7 +171,7 @@ class Mongo_Database {
 		if( ! $this->_connected)
 		{
       $this->_connected = $this->_connection->connect();
-      $this->_db = $this->_connection->selectDB($this->_db);
+      $this->_db = $this->_connection->selectDB("$this->_db");
     }
 		return $this->_connected;
 	}
@@ -186,7 +186,7 @@ class Mongo_Database {
 		if ($this->_connected)
 		{
 			$this->_connected = $this->_connection->close();
-  		$this->_db = NULL;
+  		$this->_db = "$this->_db";
 		}
     return $this->_connected;
 	}

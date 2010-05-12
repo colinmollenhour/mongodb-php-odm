@@ -502,6 +502,11 @@ abstract class Mongo_Document {
         }
         else
         {
+          // Extract just id if value is a DBRef
+          if(is_array($value) && isset($value['$id']))
+          {
+            $value = $value['$id'];
+          }
           $this->_related_objects[$name] = Mongo_Document::factory($model, $value);
         }
       }

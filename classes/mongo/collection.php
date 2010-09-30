@@ -237,9 +237,15 @@ class Mongo_Collection implements Iterator, Countable {
    * @param   array $fields
    * @return  Mongo_collection
    */
-  public function fields($fields = array())
+  public function fields($fields = array(), $include = 1)
   {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
+
+    // Map array to hash
+    if($fields == array_values($fields))
+    {
+      $fields = array_fill_keys($fields, $include);
+    }
 
     // Translate field aliases
     foreach($fields as $field => $value)
@@ -401,7 +407,7 @@ class Mongo_Collection implements Iterator, Countable {
   public function load($skipBenchmark = FALSE)
   {
     // Execute the query and set the options
-    $this->_cursor = $this->collection()->find($this->_query, array_keys($this->_fields));
+    $this->_cursor = $this->collection()->find($this->_query, $this->_fields);
     foreach($this->_options as $key => $value)
     {
       if($value === NULL) $this->_cursor->$key();
@@ -450,6 +456,10 @@ class Mongo_Collection implements Iterator, Countable {
     }
 
     $fields_trans = array();
+    if($fields && is_int(key($fields)))
+    {
+      $fields = array_fill_keys($fields, 1);
+    }
     foreach($fields as $field => $value)
     {
       $fields_trans[$this->get_field_name($field)] = $value;
@@ -558,6 +568,48 @@ class Mongo_Collection implements Iterator, Countable {
     }
 
     return $list;
+  }
+
+  /**
+   * Emulate an SQL "NATURAL JOIN" when there is a 1-1 or n-1 relationship with one additional query
+   * for all related documents
+   *
+   * @param string $model_field
+   * @param string $id_field
+   * @return array
+   */
+  public function natural_join($model_field, $id_field = NULL)
+  {
+    if( ! $id_field) {
+      $id_field = "_$model_field";
+    }
+
+    $left = $this->as_array();
+    $right_ids = array();
+    foreach($left as $doc)
+    {
+      $right_id = $doc->$id_field;
+      if($right_id)
+      {
+        $right_ids[$right_id] = TRUE;
+      }
+    }
+    if($right_ids)
+    {
+      $right = $this->get_model()->$model_field->collection(TRUE)
+                  ->find(array(
+                    '_id' => array('$in' => array_keys($right_ids)))
+                  )
+                  ->as_array();
+      foreach($left as $doc)
+      {
+        if(isset($right[$doc->$id_field]))
+        {
+          $doc->$model_field = $right[$doc->$id_field];
+        }
+      }
+    }
+    return $left;
   }
 
   /********************************
@@ -705,7 +757,7 @@ class Mongo_Collection implements Iterator, Countable {
   {
     $query = array();
     if($this->_query) $query[] = JSON::str($this->_query);
-    if($this->_fields) $query[] = JSON::str(array_keys($this->_fields));
+    if($this->_fields) $query[] = JSON::str($this->_fields);
     $query = "db.$this->name.find(".implode(',',$query).")";
     foreach($this->_options as $key => $value)
     {

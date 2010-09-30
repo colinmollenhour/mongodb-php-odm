@@ -143,6 +143,10 @@
 
 abstract class Mongo_Document {
 
+  const SAVE_INSERT = 'insert';
+  const SAVE_UPDATE = 'update';
+  const SAVE_UPSERT = 'upsert';
+
   /**
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
@@ -594,6 +598,9 @@ abstract class Mongo_Document {
    */
   public function set($name, $value)
   {
+    if( ! strpos($name, '.')) {
+      return $this->__set($name, $value);
+    }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;
     return $this->_set_dirty($name);
@@ -958,13 +965,13 @@ abstract class Mongo_Document {
    */
   public function save($safe = TRUE)
   {
-    // Save changes to or create referenced objects
-    $this->save_references($safe);
+    // Update references to referenced models
+    $this->_update_references($safe);
 
     // Insert new record if no _id or _id was set by user
     if( ! isset($this->_object['_id']) || isset($this->_changed['_id']))
     {
-      $this->before_save('insert');
+      $this->before_save(self::SAVE_INSERT);
 
       $values = array();
       foreach($this->_changed as $name => $_true)
@@ -976,7 +983,7 @@ abstract class Mongo_Document {
       {
         throw new MongoException('Cannot insert empty array.');
       }
-
+      
       $err = $this->collection()->insert($values, $safe);
 
       if( $safe && $err['err'] )
@@ -984,7 +991,7 @@ abstract class Mongo_Document {
         throw new MongoException('Unable to insert '.get_class($this).': '.$err['err']);
       }
 
-      if ( ! isset($this->_object['id']))
+      if ( ! isset($this->_object['_id']))
       {
         // Store (assigned) MongoID in object
         $this->_object['_id'] = $values['_id'];
@@ -1006,7 +1013,7 @@ abstract class Mongo_Document {
     // Update assumed existing document
     else
     {
-      $this->before_save('update');
+      $this->before_save(self::SAVE_UPDATE);
 
       if($this->_changed)
       {
@@ -1033,19 +1040,15 @@ abstract class Mongo_Document {
     return $this;
   }
 
-  protected function save_references($safe = TRUE)
+  protected function _update_references($safe = TRUE)
   {
     foreach($this->_references as $name => $ref)
     {
       if(isset($this->_related_objects[$name]) && $this->_related_objects[$name] instanceof Mongo_Document)
       {
         $model = $this->_related_objects[$name];
-        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
-        if($model->is_changed())
-        {
-          $model->save($safe);
-        }
-        if( ! $this->__isset($id_field) || $this->$id_field != $model->_id)
+        $id_field = isset($ref['field']) ? $ref['field'] : "_$name";
+        if( ! $this->__isset($id_field) || $this->__get($id_field) != $model->_id)
         {
           $this->__set($id_field, $model->_id);
         }
@@ -1056,7 +1059,7 @@ abstract class Mongo_Document {
   /**
    * Override this method to take certain actions before the data is saved
    *
-   * @param   string  $action  The type of save action ('insert','update','upsert')
+   * @param   string  $action  The type of save action, one of Mongo_Document::SAVE_*
    */
   protected function before_save($state){}
 
@@ -1098,7 +1101,7 @@ abstract class Mongo_Document {
       throw new MongoException('Cannot upsert '.get_class($this).': no criteria');
     }
 
-    $this->before_save('upsert');
+    $this->before_save(self::SAVE_UPSERT);
 
     $operations = self::array_merge_recursive_distinct($this->_operations, $operations);
 

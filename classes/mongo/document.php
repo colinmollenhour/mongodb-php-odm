@@ -599,7 +599,8 @@ abstract class Mongo_Document {
   public function set($name, $value)
   {
     if( ! strpos($name, '.')) {
-      return $this->__set($name, $value);
+      $this->__set($name, $value);
+      return $this;
     }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;

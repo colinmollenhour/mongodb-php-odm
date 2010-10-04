@@ -190,8 +190,9 @@ class Controller_Mongotest extends Controller {
     $doc->id = 'foo';
     $doc->other = Mongo_Document::factory('other');
     $doc->other->bar = 'baz';
+    $doc->other->save();
     $doc->save();
-    $this->assert('referenced document reference created', $doc->_other);
+    $this->assert('referenced document reference exists', $doc->_other);
     $doc = new Model_Document('foo');
     $this->assert('nested document saved',$doc->other->bar == 'baz');
 

@@ -51,9 +51,9 @@
 
 class Mongo_Database {
 
-	/** Mongo_Database instances
+  /** Mongo_Database instances
    *  @static  array */
-	protected static $instances = array();
+  protected static $instances = array();
 
   /**
    * Get a Mongo_Database instance. Configuration options are:
@@ -70,41 +70,53 @@ class Mongo_Database {
    * @return  Mongo_Database
    * @static
    */
-	public static function instance($name = 'default', array $config = NULL)
-	{
-		if( ! isset(self::$instances[$name]) )
-		{
-			if ($config === NULL)
-			{
-				// Load the configuration for this database
-				$config = Kohana::config('mongo')->$name;
-			}
+  public static function instance($name = 'default', array $config = NULL)
+  {
+    if( ! isset(self::$instances[$name]) )
+    {
+      if ($config === NULL)
+      {
+        // Load the configuration for this database
+        $config = Kohana::config('mongo')->$name;
+      }
 
-			new self($name,$config);
-		}
+      new self($name,$config);
+    }
 
-		return self::$instances[$name];
-	}
+    return self::$instances[$name];
+  }
 
-	/** Mongo_Database instance name
+  /** Mongo_Database instance name
    *  @var  string */
-	protected $_name;
+  protected $_name;
 
-	/** Connection state
+  /** Connection state
    *  @var  boolean */
-	protected $_connected = FALSE;
+  protected $_connected = FALSE;
 
-	/** The Mongo server connection
+  /** The Mongo server connection
    *  @var  Mongo */
-	protected $_connection;
+  protected $_connection;
 
-	/** The database instance for the database name chosen by the config
+  /** The database instance for the database name chosen by the config
    *  @var  MongoDB */
-	protected $_db;
+  protected $_db;
+
+  /** The class name for the MongoCollection wrapper. Defaults to Mongo_Collection.
+   * @var string */
+  protected $_collection_class;
 
   /** A flag to indicate if profiling is enabled and to allow it to be enabled/disabled on the fly
    *  @var  boolean */
   public $profiling;
+
+  /** A callback called when profiling starts
+   * @var callback */
+  protected $_start_callback = array('Profiler','start');
+
+  /** A callback called when profiling stops
+   * @var callback */
+  protected $_stop_callback = array('Profiler','stop');
 
   /**
    * This cannot be called directly, use Mongo_Database::instance() instead to get an instance of this class.
@@ -112,9 +124,9 @@ class Mongo_Database {
    * @param  string  $name  The configuration name
    * @param  array  $config The configuration data
    */
-	protected function __construct($name, array $config)
-	{
-		$this->_name = $name;
+  protected function __construct($name, array $config)
+  {
+    $this->_name = $name;
 
     // Setup connection options merged over the defaults and store the connection
     $options = array(
@@ -132,16 +144,19 @@ class Mongo_Database {
     
     // Save the database name for later use
     $this->_db = $config['database'];
+
+    // Set the collection class name
+    $this->_collection_class = (isset($config['collection']) ? $config['collection'] : 'Mongo_Collection');
     
     // Save profiling option in a public variable
     $this->profiling = (isset($config['profiling']) && $config['profiling']);
 
-		// Store the database instance
-		self::$instances[$name] = $this;
-	}
+    // Store the database instance
+    self::$instances[$name] = $this;
+  }
 
-	final public function __destruct()
-	{
+  final public function __destruct()
+  {
     try {
       $this->close();
       $this->_connection = NULL;
@@ -149,15 +164,15 @@ class Mongo_Database {
     } catch(Exception $e) {
       // can't throw exceptions in __destruct
     }
-	}
+  }
 
   /**
    * @return  string  The configuration name
    */
-	final public function __toString()
-	{
-		return $this->_name;
-	}
+  final public function __toString()
+  {
+    return $this->_name;
+  }
 
   /**
    * Force the connection to be established.
@@ -166,30 +181,30 @@ class Mongo_Database {
    * @return boolean
    * @throws MongoException
    */
-	public function connect()
-	{
-		if( ! $this->_connected)
-		{
+  public function connect()
+  {
+    if( ! $this->_connected)
+    {
       $this->_connected = $this->_connection->connect();
       $this->_db = $this->_connection->selectDB("$this->_db");
     }
-		return $this->_connected;
-	}
+    return $this->_connected;
+  }
 
   /**
    * Close the connection to Mongo
    *
    * @return  boolean  if the connection was successfully closed
    */
-	public function close()
-	{
-		if ($this->_connected)
-		{
-			$this->_connected = $this->_connection->close();
-  		$this->_db = "$this->_db";
-		}
+  public function close()
+  {
+    if ($this->_connected)
+    {
+      $this->_connected = $this->_connection->close();
+      $this->_db = "$this->_db";
+    }
     return $this->_connected;
-	}
+  }
 
   /**
    * Expose the MongoDb instance directly.
@@ -220,18 +235,18 @@ class Mongo_Database {
       throw new Exception("Method does not exist: MongoDb::$name");
     }
 
-		if ( $this->profiling && ! strpos("Error",$name) && $name != 'createDBRef' )
-		{
+    if ( $this->profiling && ! strpos("Error",$name) && $name != 'createDBRef' )
+    {
       $json_arguments = array(); foreach($arguments as $arg) $json_arguments[] = json_encode((is_array($arg) ? (object)$arg : $arg));
-			$_bm = Profiler::start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
-		}
+      $_bm = $this->profiler_start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
+    }
 
     $retval = call_user_func_array(array($this->_db, $name), $arguments);
 
-		if ( isset($_bm))
-		{
-			Profiler::stop($_bm);
-		}
+    if ( isset($_bm))
+    {
+      $this->profiler_stop($_bm);
+    }
 
     return $retval;
   }
@@ -244,15 +259,15 @@ class Mongo_Database {
    * @return mixed
    * @throws MongoException
    */
-	public function execute( $code, array $args = array() )
-	{
-		$retval = $this->__call('execute', array($code,$args));
+  public function execute( $code, array $args = array() )
+  {
+    $retval = $this->__call('execute', array($code,$args));
     if( empty($retval['ok']) )
     {
       throw new MongoException($retval['errmsg'], $retval['errno']);
     }
     return $retval['retval'];
-	}
+  }
 
   /**
    * Get a Mongo_Collection instance (wraps MongoCollection)
@@ -263,7 +278,7 @@ class Mongo_Database {
   public function selectCollection($name)
   {
     $this->_connected OR $this->connect();
-    return new Mongo_Collection($name, $this->_name);
+    return new $this->_collection_class($name, $this->_name);
   }
 
   /**
@@ -275,7 +290,7 @@ class Mongo_Database {
   public function getGridFS($prefix = 'fs')
   {
     $this->_connected OR $this->connect();
-    return new Mongo_Collection($prefix, $this->_name, TRUE);
+    return new $this->_collection_class($prefix, $this->_name, TRUE);
   }
 
   /**
@@ -287,6 +302,49 @@ class Mongo_Database {
   public function __get($name)
   {
     return $this->selectCollection($name);
+  }
+
+  /**
+   * Allows one to override the default Mongo_Collection class.
+   *
+   * @param string $class_name
+   */
+  public function set_collection_class($class_name)
+  {
+    $this->_collection_class = $class_name;
+  }
+
+  /**
+   * Set the profiler callback. Defaults to Kohana profiler.
+   * 
+   * @param callback $start
+   * @param callback $stop 
+   */
+  public function set_profiler($start, $stop)
+  {
+    $this->_start_callback = $start;
+    $this->_stop_callback = $stop;
+  }
+
+  /**
+   * Start method for profiler
+   *
+   * @param string $group
+   * @param string $query
+   */
+  public function profiler_start($group, $query)
+  {
+    call_user_func($this->_start_callback, $group, $query);
+  }
+
+  /**
+   * Stop method for profiler
+   *
+   * @param string $token
+   */
+  public function profiler_stop($token)
+  {
+    call_user_func($this->_stop_callback, $token);
   }
 
 }

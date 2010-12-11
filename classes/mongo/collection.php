@@ -118,15 +118,17 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @return  Mongo_Collection
    */
-  public function reset()
+  public function reset($cursor_only = FALSE)
   {
-    $this->_query = $this->_fields = $this->_options = array();
+    if( ! $cursor_only) {
+      $this->_query = $this->_fields = $this->_options = array();
+    }
     $this->_cursor = NULL;
     return $this;
   }
 
   /**
-   * Magic method override passes on method calls to either the MongoCursor or the MongoCollection
+   * Magic method override. Passes on method calls to either the MongoCursor or the MongoCollection
    *
    * @param   string $name
    * @param   array $arguments
@@ -144,14 +146,14 @@ class Mongo_Collection implements Iterator, Countable {
       if($this->db()->profiling && in_array($name,array('batchInsert','findOne','getDBRef','group','insert','remove','save','update')))
       {
         $json_arguments = array(); foreach($arguments as $arg) $json_arguments[] = json_encode((is_array($arg) ? (object)$arg : $arg));
-        $bm = Profiler::start("Mongo_Database::$this->db","db.$this->name.$name(".implode(',',$json_arguments).")");
+        $bm = $this->db()->profiler_start("Mongo_Database::$this->db","db.$this->name.$name(".implode(',',$json_arguments).")");
       }
 
       $return = call_user_func_array(array($this->collection(), $name), $arguments);
 
       if(isset($bm))
       {
-        Profiler::stop($bm);
+        $this->db()->profiler_stop($bm);
       }
 
       return $return;
@@ -224,7 +226,33 @@ class Mongo_Collection implements Iterator, Countable {
     $query_fields = array();
     foreach($query as $field => $value)
     {
-      $query_fields[$this->get_field_name($field)] = $value;
+      // Special purpose condition
+      if($field[0] == '$')
+      {
+        // $or and $where and possibly other special values
+        if($field == '$or')
+        {
+          if( ! isset($this->_query['$or']))
+          {
+            $this->_query['$or'] = array();
+          }
+          $this->_query['$or'][] = $value;
+        }
+        else if($field == '$where')
+        {
+          $this->_query['$where'] = $value;
+        }
+        else
+        {
+          $query_fields[$field] = $value;
+        }
+      }
+
+      // Simple key = value condition
+      else
+      {
+        $query_fields[$this->get_field_name($field)] = $value;
+      }
     }
 
     $this->_query = self::array_merge_recursive_distinct($this->_query, $query_fields);
@@ -264,9 +292,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function hint(array $key_pattern)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['hint'] = $key_pattern;
-    return $this;
+    return $this->set_option('hint', $key_pattern);
   }
 
   /**
@@ -277,9 +303,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function immortal($liveForever = TRUE)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['immortal'] = $liveForever;
-    return $this;
+    return $this->set_option('immortal', $liveForever);
   }
 
   /**
@@ -290,9 +314,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function limit($num)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['limit'] = $num;
-    return $this;
+    return $this->set_option('limit', $num);
   }
 
   /**
@@ -303,9 +325,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function skip($num)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['skip'] = $num;
-    return $this;
+    return $this->set_option('skip', $num);
   }
 
   /**
@@ -316,9 +336,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function slaveOkay($okay = TRUE)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['slaveOkay'] = $okay;
-    return $this;
+    return $this->set_option('slaveOkay', $okay);
   }
 
   /**
@@ -328,9 +346,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function snapshot()
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['snapshot'] = NULL;
-    return $this;
+    return $this->set_option('snapshot', NULL);
   }
 
   /**
@@ -340,7 +356,7 @@ class Mongo_Collection implements Iterator, Countable {
    * @param   mixed  The direction if $fields is a key
    * @return  Mongo_Collection
    */
-  public function sort($fields, $direction = 1)
+  public function sort($fields, $direction = self::ASC)
   {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
 
@@ -357,6 +373,14 @@ class Mongo_Collection implements Iterator, Countable {
     // Translate field aliases
     foreach($fields as $field => $direction)
     {
+      if(is_string($direction))
+      {
+        if($direction == 'asc' || $direction == '1')
+          $direction = self::ASC;
+        else
+          $direction = self::DESC;
+      }
+
       $this->_options['sort'][$this->get_field_name($field)] = $direction;
     }
 
@@ -393,9 +417,66 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function tailable($tail = TRUE)
   {
+    return $this->set_option('tailable', $tail);
+  }
+
+  /**
+   * See if a cursor has an option to be set before executing the query.
+   *
+   * @param  string  $name
+   * @return boolean
+   */
+  public function has_option($name)
+  {
+    return array_key_exists($name, $this->_options);
+  }
+
+  /**
+   * Get a cursor option to be set before executing the query.
+   *
+   * @param  string  $name
+   * @return mixed
+   */
+  public function get_option($name)
+  {
+    return isset($this->_options[$name]) ? $this->_options[$name] : NULL;
+  }
+
+  /**
+   * Set a cursor option to be set before executing the query.
+   *
+   * @param  string  $name
+   * @param  mixed  $value
+   * @return Mongo_Collection
+   */
+  public function set_option($name, $value)
+  {
     if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
-    $this->_options['tailable'] = $tail;
+    $this->_options[$name] = $value;
     return $this;
+  }
+
+  /**
+   * Unset a cursor option to be set before executing the query.
+   *
+   * @param  string  $name
+   * @return Mongo_Collection
+   */
+  public function unset_option($name)
+  {
+    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
+    unset($this->_options[$name]);
+    return $this;
+  }
+
+  /**
+   * Is the query executed yet?
+   * 
+   * @return boolean
+   */
+  public function is_loaded()
+  {
+    return !!$this->_cursor;
   }
 
   /**
@@ -416,7 +497,7 @@ class Mongo_Collection implements Iterator, Countable {
 
     if($this->db()->profiling && ! $skipBenchmark)
     {
-      $this->_bm = Profiler::start("Mongo_Database::$this->db",$this->inspect());
+      $this->_bm = $this->db()->profiler_start("Mongo_Database::$this->db",$this->inspect());
     }
 
     return $this;
@@ -632,7 +713,7 @@ class Mongo_Collection implements Iterator, Countable {
       // Profile count operation for cursor
       if($this->db()->profiling)
       {
-        $bm = Profiler::start("Mongo_Database::$this->db",$this->inspect().".count(".JSON::str($query).")");
+        $bm = $this->db()->profiler_start("Mongo_Database::$this->db",$this->inspect().".count(".JSON::str($query).")");
       }
 
       $this->_cursor OR $this->load(TRUE);
@@ -659,7 +740,7 @@ class Mongo_Collection implements Iterator, Countable {
       // Profile count operation for collection
       if($this->db()->profiling)
       {
-        $bm = Profiler::start("Mongo_Database::$this->db","db.$this->name.count(".($query ? JSON::str($query):'').")");
+        $bm = $this->db()->profiler_start("Mongo_Database::$this->db","db.$this->name.count(".($query ? JSON::str($query):'').")");
       }
 
       $count = $this->collection()->count($query);
@@ -668,7 +749,7 @@ class Mongo_Collection implements Iterator, Countable {
     // End profiling count
     if(isset($bm))
     {
-      Profiler::stop($bm);
+      $this->db()->profiler_stop($bm);
     }
 
     return $count;
@@ -677,7 +758,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Implement MongoCursor#hasNext to ensure that the cursor is loaded
    *
-   * @return  Mongo_Document
+   * @return  boolean
    */
   public function hasNext()
   {
@@ -704,7 +785,7 @@ class Mongo_Collection implements Iterator, Countable {
 
     if(isset($this->_bm))
     {
-      Profiler::stop($this->_bm);
+      $this->db()->profiler_stop($this->_bm);
       unset($this->_bm);
     }
 

@@ -112,6 +112,14 @@ class Mongo_Collection implements Iterator, Countable {
       $this->_model = $model;
     }
   }
+  
+  /**
+   * Cloned objects have uninitialized cursors.
+   */
+  public function __clone()
+  {
+    $this->reset(TRUE);
+  }
 
   /**
    * Reset the state of the query (must be called manually if re-using a collection for a new query)
@@ -205,7 +213,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function find($query = array(), $value = NULL)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
+    if($this->_cursor) throw new MongoCursorException('The cursor has already been instantiated.');
     if( ! is_array($query))
     {
       if($query[0] == "{")
@@ -443,7 +451,7 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
-   * Set a cursor option to be set before executing the query.
+   * Set a cursor option. Will apply to currently loaded cursor if it has not started iterating.
    *
    * @param  string  $name
    * @param  mixed  $value
@@ -451,7 +459,17 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function set_option($name, $value)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
+    if($name != 'batchSize' && $name != 'timeout' && $this->is_iterating())
+    {
+      throw new MongoCursorException('The cursor has already started iterating.');
+    }
+    
+    if($this->_cursor)
+    {
+      if($value === NULL) $this->_cursor->$name();
+      else $this->_cursor->$name($value);
+    }
+    
     $this->_options[$name] = $value;
     return $this;
   }
@@ -464,7 +482,10 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function unset_option($name)
   {
-    if($this->_cursor) throw new MongoCursorException('The cursor has already started iterating.');
+    if($this->is_iterating())
+    {
+      throw new MongoCursorException('The cursor has already started iterating.');
+    }
     unset($this->_options[$name]);
     return $this;
   }
@@ -477,6 +498,23 @@ class Mongo_Collection implements Iterator, Countable {
   public function is_loaded()
   {
     return !!$this->_cursor;
+  }
+  
+  /**
+   * Is the query iterating yet?
+   * 
+   * @return boolean
+   */
+  public function is_iterating()
+  {
+    if( ! $this->_cursor) {
+      return FALSE;
+    }
+    $info = $this->_cursor->info();
+    if( ! isset($info['started_iterating'])) {
+      throw new Exception('Driver version >= 1.0.10 required.');
+    }
+    return $info['started_iterating'];
   }
 
   /**

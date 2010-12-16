@@ -238,7 +238,8 @@ class Mongo_Database {
     if ( $this->profiling && ! strpos("Error",$name) && $name != 'createDBRef' )
     {
       $json_arguments = array(); foreach($arguments as $arg) $json_arguments[] = json_encode((is_array($arg) ? (object)$arg : $arg));
-      $_bm = $this->profiler_start("Mongo_Database::{$this->_name}","db.$name(".implode(',',$json_arguments).")");
+      $method = ($name == 'command' ? 'runCommand' : $name);
+      $_bm = $this->profiler_start("Mongo_Database::{$this->_name}","db.$method(".implode(',',$json_arguments).")");
     }
 
     $retval = call_user_func_array(array($this->_db, $name), $arguments);
@@ -302,6 +303,40 @@ class Mongo_Database {
   public function __get($name)
   {
     return $this->selectCollection($name);
+  }
+
+  /**
+   * Simple findAndModify helper
+   *
+   * @param string $collection
+   * @param array $command
+   * @return array
+   */
+  public function findAndModify($collection, $command)
+  {
+    $command = array_merge(array('findAndModify' => (string)$collection), $command);
+    $data = $this->command($command);
+    if( ! isset($data['ok'])) {
+      throw new MongoException($data['errmsg']);
+    }
+    return $data['value'];
+  }
+
+  /**
+   * Get the next auto-increment value for the given key
+   *
+   * @return int
+   * @throws MongoException
+   */
+  public function get_auto_increment($key, $collection = 'autoincrements')
+  {
+    $data = $this->findAndModify($collection, array(
+      'query'  => array('_id' => $key),
+      'update' => array('$inc' => array('value' => 1)),
+      'upsert' => TRUE,
+      'new'    => TRUE,
+    ));
+    return $data['value'];
   }
 
   /**

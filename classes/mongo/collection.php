@@ -588,6 +588,28 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Simple findAndModify helper
+   * 
+   * @param array $command
+   * @return array
+   */
+  public function findAndModify($command)
+  {
+    return $this->db()->findAndModify($this->name, $command);
+  }
+
+  /**
+   * Get the next auto-increment value for this collection
+   *
+   * @return int
+   * @throws MongoException
+   */
+  public function get_auto_increment()
+  {
+    return $this->db()->get_auto_increment($this->name);
+  }
+
+  /**
    * Get an instance of the corresponding document model.
    *
    * @return  Mongo_Document

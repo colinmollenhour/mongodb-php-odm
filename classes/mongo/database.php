@@ -369,7 +369,7 @@ class Mongo_Database {
    */
   public function profiler_start($group, $query)
   {
-    call_user_func($this->_start_callback, $group, $query);
+    return call_user_func($this->_start_callback, $group, $query);
   }
 
   /**

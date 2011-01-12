@@ -51,6 +51,26 @@
 
 class Mongo_Database {
 
+  /* See http://bsonspec.org */
+  const TYPE_DOUBLE        = 1;
+  const TYPE_STRING        = 2;
+  const TYPE_OBJECT        = 3;
+  const TYPE_ARRAY         = 4;
+  const TYPE_BINARY        = 5;
+  const TYPE_OBJECTID      = 7;
+  const TYPE_BOOLEAN       = 8;
+  const TYPE_DATE          = 9;
+  const TYPE_NULL          = 10;
+  const TYPE_REGEX         = 11;
+  const TYPE_CODE          = 13;
+  const TYPE_SYMBOL        = 14;
+  const TYPE_CODE_SCOPED   = 15;
+  const TYPE_INT32         = 16;
+  const TYPE_TIMESTAMP     = 17;
+  const TYPE_INT64         = 18;
+  const TYPE_MIN_KEY       = 255;
+  const TYPE_MAX_KEY       = 127;
+
   /** Mongo_Database instances
    *  @static  array */
   protected static $instances = array();

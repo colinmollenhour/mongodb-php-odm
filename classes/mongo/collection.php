@@ -525,8 +525,19 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function load($skipBenchmark = FALSE)
   {
-    // Execute the query and set the options
-    $this->_cursor = $this->collection()->find($this->_query, $this->_fields);
+    // Execute the query, add query to any thrown exceptions
+    try
+    {
+      $this->_cursor = $this->collection()->find($this->_query, $this->_fields);
+    }
+    catch(MongoCursorException $e) {
+      throw new MongoCursorException("{$e->getMessage()}: {$this->inspect()}", $e->getCode());
+    }
+    catch(MongoException $e) {
+      throw new MongoException("{$e->getMessage()}: {$this->inspect()}", $e->getCode());
+    }
+
+    // Add cursor options
     foreach($this->_options as $key => $value)
     {
       if($value === NULL) $this->_cursor->$key();
@@ -659,7 +670,6 @@ class Mongo_Collection implements Iterator, Countable {
   public function as_array( $objects = TRUE )
   {
     $array = array();
-
     if($objects)
     {
       foreach($this as $key => $value)
@@ -675,7 +685,6 @@ class Mongo_Collection implements Iterator, Countable {
         $array[$key] = $value;
       }
     }
-
     return $array;
   }
 
@@ -878,7 +887,17 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function rewind()
   {
-    $this->cursor()->rewind();
+    $this->cursor();
+    try
+    {
+      $this->_cursor->rewind();
+    }
+    catch(MongoCursorException $e) {
+      throw new MongoCursorException("{$e->getMessage()}: {$this->inspect()}", $e->getCode());
+    }
+    catch(MongoException $e) {
+      throw new MongoException("{$e->getMessage()}: {$this->inspect()}", $e->getCode());
+    }
   }
 
   /**

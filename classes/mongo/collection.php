@@ -441,17 +441,27 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Get a cursor option to be set before executing the query.
+   * Also supports retrieving 'query' and 'fields'.
    *
    * @param  string  $name
    * @return mixed
    */
   public function get_option($name)
   {
+    if($name == 'query')
+    {
+      return $this->_query;
+    }
+    if($name == 'fields')
+    {
+      return $this->_fields;
+    }
     return isset($this->_options[$name]) ? $this->_options[$name] : NULL;
   }
 
   /**
    * Set a cursor option. Will apply to currently loaded cursor if it has not started iterating.
+   * Also supports setting 'query' and 'fields'.
    *
    * @param  string  $name
    * @param  mixed  $value
@@ -463,14 +473,25 @@ class Mongo_Collection implements Iterator, Countable {
     {
       throw new MongoCursorException('The cursor has already started iterating.');
     }
-    
-    if($this->_cursor)
+
+    if($name == 'query')
     {
-      if($value === NULL) $this->_cursor->$name();
-      else $this->_cursor->$name($value);
+      $this->_query = $value;
     }
-    
-    $this->_options[$name] = $value;
+    else if($name == 'fields')
+    {
+      $this->_fields = $value;
+    }
+    else
+    {
+      if($this->_cursor)
+      {
+        if($value === NULL) $this->_cursor->$name();
+        else $this->_cursor->$name($value);
+      }
+
+      $this->_options[$name] = $value;
+    }
     return $this;
   }
 
@@ -941,26 +962,40 @@ class Mongo_Collection implements Iterator, Countable {
    * @param array $array1
    * @param array $array2
    * @return array
-   * @author Daniel <daniel (at) danielsmedegaardbuus (dot) dk>
-   * @author Gabriel Sobrinho <gabriel (dot) sobrinho (at) gmail (dot) com>
    */
-  protected static function array_merge_recursive_distinct ( array &$array1, array &$array2 )
+  protected static function array_merge_recursive_distinct ( array $array1, array $array2 )
   {
-    $merged = $array1;
+    if( ! count($array1)) {
+      return $array2;
+    }
 
-    foreach ( $array2 as $key => &$value )
+    foreach ( $array2 as $key => $value )
     {
-      if ( is_array ( $value ) && isset ( $merged [$key] ) && is_array ( $merged [$key] ) )
+      if ( is_array ( $value ) && isset ( $array1 [$key] ) && is_array ( $array1 [$key] ) )
       {
-        $merged [$key] = self::array_merge_recursive_distinct ( $merged [$key], $value );
+        // Intersect $in queries
+        if($key == '$in')
+        {
+          $array1[$key] = array_intersect($array1[$key], $value);
+        }
+        // Union $nin and $all queries
+        else if($key == '$nin' || $key == '$all')
+        {
+          $array1[$key] = array_unique(array_splice($array1[$key], count($array1[$key]), 0, $value));
+        }
+        // Recursively merge all other queries/values
+        else
+        {
+          $array1 [$key] = self::array_merge_recursive_distinct ( $array1 [$key], $value );
+        }
       }
       else
       {
-        $merged [$key] = $value;
+        $array1 [$key] = $value;
       }
     }
 
-    return $merged;
+    return $array1;
   }
 
 }

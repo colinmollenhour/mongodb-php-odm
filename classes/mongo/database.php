@@ -277,17 +277,40 @@ class Mongo_Database {
    *
    * @param  string  $code
    * @param  array  $args
+   * @param  array  $scope  A scope for the code if $code is a string
    * @return mixed
    * @throws MongoException
    */
-  public function execute( $code, array $args = array() )
+  public function execute_safe( $code, array $args = array(), $scope = array() )
   {
-    $retval = $this->__call('execute', array($code,$args));
-    if( empty($retval['ok']) )
-    {
-      throw new MongoException($retval['errmsg'], $retval['errno']);
+    if( ! $code instanceof MongoCode) {
+      $code = new MongoCode($code, $scope);
     }
-    return $retval['retval'];
+    $result = $this->execute($code, $args);
+    if( empty($result['ok']) )
+    {
+      throw new MongoException($result['errmsg'], $result['errno']);
+    }
+    return $result['retval'];
+  }
+
+  /**
+   * Run a command, but throw an exception on error
+   *
+   * @param array $command
+   * @return array
+   * @throws MongoException
+   */
+  public function command_safe($command)
+  {
+    $result = $this->command($command);
+    if( empty($result['ok']) )
+    {
+      $message = isset($result['errmsg']) ? $result['errmsg'] : 'Error: '.json_encode($result);
+      $code = isset($result['errno']) ? $result['errno'] : 0;
+      throw new MongoException($message, $code);
+    }
+    return $result;
   }
 
   /**
@@ -331,15 +354,13 @@ class Mongo_Database {
    * @param string $collection
    * @param array $command
    * @return array
+   * @throws MongoException
    */
   public function findAndModify($collection, $command)
   {
     $command = array_merge(array('findAndModify' => (string)$collection), $command);
-    $data = $this->command($command);
-    if( ! isset($data['ok'])) {
-      throw new MongoException($data['errmsg']);
-    }
-    return $data['value'];
+    $result = $this->command_safe($command);
+    return $result['value'];
   }
 
   /**

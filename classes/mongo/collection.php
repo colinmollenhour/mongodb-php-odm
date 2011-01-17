@@ -642,6 +642,25 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * 
+   */
+  public function group_safe($keys, $initial, $reduce, $options = array())
+  {
+    if(is_string($keys)) {
+      $keys = array($keys => 1);
+    }
+    if( ! $reduce instanceof MongoCode) {
+      $reduce = new MongoCode($reduce);
+    }
+    $result = $this->__call('group', array($keys, $initial, $reduce, $options));
+    if( empty($result['ok'])) {
+      $message = json_encode($result); //isset($result['errmsg']) ? $result['errmsg'] : ;
+      throw new MongoException($message);
+    }
+    return $result['retval'];
+  }
+
+  /**
    * Get an instance of the corresponding document model.
    *
    * @return  Mongo_Document

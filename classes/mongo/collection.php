@@ -642,7 +642,7 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
-   * 
+   * Perform a group aggregation and return the result or throw an exception on error
    */
   public function group_safe($keys, $initial, $reduce, $options = array())
   {
@@ -658,6 +658,32 @@ class Mongo_Collection implements Iterator, Countable {
       throw new MongoException($message);
     }
     return $result['retval'];
+  }
+
+  /**
+   * Perform an update, throw exception on errors.
+   * If multi update return number of documents updated on success
+   * Otherwise return whether or not an object was updated
+   * 
+   * @param array $criteria
+   * @param array $update
+   * @param array $options 
+   * @return int|bool
+   * @throws MongoException on error
+   */
+  public function update_safe($criteria, $update, $options = array())
+  {
+    $options = array_merge(array('safe' => TRUE, 'multiple' => FALSE, 'upsert' => FALSE), $options);
+    $result = $this->update($criteria, $update, $options);
+    if( ! $result['ok']) {
+      throw new MongoException($result['err']);
+    }
+    if($options['multiple']) {
+      return $result['n'];
+    }
+    else {
+      return $result['updatedExisting'];
+    }
   }
 
   /**

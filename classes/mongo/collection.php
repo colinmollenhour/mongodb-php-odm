@@ -539,7 +539,7 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
-   * Force the collection to be loaded, after this is called the query cannot be modified.
+   * Instantiates a cursor, after this is called the query cannot be modified.
    * This is automatically called when the iterator initializes (rewind).
    *
    * @return  Mongo_Collection
@@ -563,11 +563,6 @@ class Mongo_Collection implements Iterator, Countable {
     {
       if($value === NULL) $this->_cursor->$key();
       else $this->_cursor->$key($value);
-    }
-
-    if($this->db()->profiling && ! $skipBenchmark)
-    {
-      $this->_bm = $this->db()->profiler_start("Mongo_Database::$this->db",$this->inspect());
     }
 
     return $this;
@@ -736,6 +731,8 @@ class Mongo_Collection implements Iterator, Countable {
   public function as_array( $objects = TRUE )
   {
     $array = array();
+
+    // Iterate using wrapper
     if($objects)
     {
       foreach($this as $key => $value)
@@ -744,9 +741,11 @@ class Mongo_Collection implements Iterator, Countable {
       }
     }
 
+    // Iterate bypassing wrapper
     else
     {
-      foreach($this->cursor() as $key => $value)
+      $this->rewind();
+      foreach($this->_cursor as $key => $value)
       {
         $array[$key] = $value;
       }
@@ -907,7 +906,17 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function getNext()
   {
-    $this->cursor()->next();
+    if( $this->db()->profiling && ( ! $this->_cursor || ! $this->is_iterating() ) )
+    {
+      $this->cursor();
+      $bm = $this->db()->profiler_start("Mongo_Database::$this->db", $this->inspect());
+      $this->cursor()->next();
+      $this->db()->profiler_stop($bm);
+    }
+    else
+    {
+      $this->cursor()->next();
+    }
     return $this->current();
   }
 
@@ -953,10 +962,18 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function rewind()
   {
-    $this->cursor();
     try
     {
-      $this->_cursor->rewind();
+      if($this->db()->profiling)
+      {
+        $bm = $this->db()->profiler_start("Mongo_Database::$this->db", $this->inspect());
+        $this->cursor()->rewind();
+        $this->db()->profiler_stop($bm);
+      }
+      else
+      {
+        $this->cursor()->rewind();
+      }
     }
     catch(MongoCursorException $e) {
       throw new MongoCursorException("{$e->getMessage()}: {$this->inspect()}", $e->getCode());

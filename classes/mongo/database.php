@@ -205,7 +205,18 @@ class Mongo_Database {
   {
     if( ! $this->_connected)
     {
+      if($this->profiling)
+      {
+        $_bm = $this->profiler_start("Mongo_Database::{$this->_name}","connect()");
+      }
+
       $this->_connected = $this->_connection->connect();
+
+      if ( isset($_bm))
+      {
+        $this->profiler_stop($_bm);
+      }
+      
       $this->_db = $this->_connection->selectDB("$this->_db");
     }
     return $this->_connected;

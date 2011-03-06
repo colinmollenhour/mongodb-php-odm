@@ -590,7 +590,7 @@ class Mongo_Collection implements Iterator, Countable {
       }
       else
       {
-        $query = array('_id' => $value);
+        $query = array('_id' => $query);
       }
     }
 

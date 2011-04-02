@@ -972,7 +972,9 @@ abstract class Mongo_Document {
     // Insert new record if no _id or _id was set by user
     if( ! isset($this->_object['_id']) || isset($this->_changed['_id']))
     {
-      $this->before_save(self::SAVE_INSERT);
+      $action = self::SAVE_INSERT;
+
+      $this->before_save($action);
 
       $values = array();
       foreach($this->_changed as $name => $_true)
@@ -1014,7 +1016,9 @@ abstract class Mongo_Document {
     // Update assumed existing document
     else
     {
-      $this->before_save(self::SAVE_UPDATE);
+      $action = self::SAVE_UPDATE;
+
+      $this->before_save($action);
 
       if($this->_changed)
       {
@@ -1036,7 +1040,7 @@ abstract class Mongo_Document {
 
     $this->_changed = $this->_operations = array();
 
-    $this->after_save();
+    $this->after_save($action);
 
     return $this;
   }
@@ -1062,12 +1066,14 @@ abstract class Mongo_Document {
    *
    * @param   string  $action  The type of save action, one of Mongo_Document::SAVE_*
    */
-  protected function before_save($state){}
+  protected function before_save($action){}
 
   /**
    * Override this method to take actions after data is saved
+   *
+   * @param   string  $action  The type of save action, one of Mongo_Document::SAVE_*
    */
-  protected function after_save(){}
+  protected function after_save($action){}
 
   /**
    * Override this method to take actions before the values are loaded

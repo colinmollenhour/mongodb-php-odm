@@ -191,7 +191,7 @@ abstract class Mongo_Document {
    *  {_id:1,user_id:2,_token:3}
    *
    * protected $_references = array(
-   *  'user' => array('model' => 'user', 'field' => 'user_id'),
+   *  'user' => array('model' => 'user', 'field' => 'user_id', 'multiple' => TRUE|FALSE|NULL),
    *  'token' => NULL,
    * );
    * </pre>
@@ -498,13 +498,7 @@ abstract class Mongo_Document {
         $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
         $value = $this->__get($id_field);
-        if( ! empty($this->_references[$name]['multiple']))
-        {
-          $this->_related_objects[$name] = Mongo_Document::factory($model)
-                  ->collection(TRUE)
-                  ->find(array('_id' => array('$in' => (array) $value)));
-        }
-        else
+        if( empty($this->_references[$name]['multiple']))
         {
           // Extract just id if value is a DBRef
           if(is_array($value) && isset($value['$id']))
@@ -512,6 +506,18 @@ abstract class Mongo_Document {
             $value = $value['$id'];
           }
           $this->_related_objects[$name] = Mongo_Document::factory($model, $value);
+        }
+        elseif ($this->_references[$name]['multiple'] === TRUE)
+        {
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
+                  ->collection(TRUE)
+                  ->find(array($this->_references[$name]['field'] => $this->id));
+        }
+        else
+        {
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
+                  ->collection(TRUE)
+                  ->find(array('_id' => array('$in' => (array) $value)));
         }
       }
       return $this->_related_objects[$name];
@@ -986,7 +992,7 @@ abstract class Mongo_Document {
       {
         throw new MongoException('Cannot insert empty array.');
       }
-      
+
       $err = $this->collection()->insert($values, $safe);
 
       if( $safe && $err['err'] )
@@ -1179,3 +1185,4 @@ abstract class Mongo_Document {
   }
 
 }
+

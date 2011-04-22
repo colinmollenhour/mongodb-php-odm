@@ -416,7 +416,7 @@ abstract class Mongo_Document {
       }
       else
       {
-        $class_name = get_class($this).'_Collection';
+        $class_name = $this->get_collection_name();
         return new $class_name(NULL, NULL, NULL, get_class($this));
       }
     }
@@ -432,13 +432,22 @@ abstract class Mongo_Document {
     }
     else
     {
-      $name = get_class($this).'_Collection';
+      $name = $this->get_collection_name();
       if( ! isset(self::$collections[$name]))
       {
         self::$collections[$name] = new $name(NULL, NULL, NULL, get_class($this));
       }
       return self::$collections[$name];
     }
+  }
+
+  /**
+   * Generates the collection name
+   * @return  string
+   */
+  protected function get_collection_name()
+  {
+    return get_class($this).'_Collection';
   }
 
   /**

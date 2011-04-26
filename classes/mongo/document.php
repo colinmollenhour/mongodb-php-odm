@@ -191,7 +191,7 @@ abstract class Mongo_Document {
    *  {_id:1,user_id:2,_token:3}
    *
    * protected $_references = array(
-   *  'user' => array('model' => 'user', 'field' => 'user_id', 'multiple' => TRUE|FALSE|NULL),
+   *  'user' => array('model' => 'user', 'field' => 'user_id'),
    *  'token' => NULL,
    * );
    * </pre>
@@ -495,10 +495,24 @@ abstract class Mongo_Document {
     {
       if( ! isset($this->_related_objects[$name]))
       {
-        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
+        $foreign_field = isset($this->_references[$name]['foreign_field']) ? $this->_references[$name]['foreign_field'] : FALSE;
+        if ($foreign_field) {
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
+            ->collection(TRUE)
+            ->find($foreign_field, $this->id);
+          return $this->_related_objects[$name];
+        }
+        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $value = $this->__get($id_field);
-        if( empty($this->_references[$name]['multiple']))
+
+        if( ! empty($this->_references[$name]['multiple']))
+        {
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
+                  ->collection(TRUE)
+                  ->find(array('_id' => array('$in' => (array) $value)));
+        }
+        else
         {
           // Extract just id if value is a DBRef
           if(is_array($value) && isset($value['$id']))
@@ -506,18 +520,6 @@ abstract class Mongo_Document {
             $value = $value['$id'];
           }
           $this->_related_objects[$name] = Mongo_Document::factory($model, $value);
-        }
-        elseif ($this->_references[$name]['multiple'] === TRUE)
-        {
-          $this->_related_objects[$name] = Mongo_Document::factory($model)
-                  ->collection(TRUE)
-                  ->find(array($this->_references[$name]['field'] => $this->id));
-        }
-        else
-        {
-          $this->_related_objects[$name] = Mongo_Document::factory($model)
-                  ->collection(TRUE)
-                  ->find(array('_id' => array('$in' => (array) $value)));
         }
       }
       return $this->_related_objects[$name];

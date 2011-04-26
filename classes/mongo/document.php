@@ -416,7 +416,7 @@ abstract class Mongo_Document {
       }
       else
       {
-        $class_name = $this->get_collection_name();
+        $class_name = $this->get_collection_class_name();
         return new $class_name(NULL, NULL, NULL, get_class($this));
       }
     }
@@ -432,7 +432,7 @@ abstract class Mongo_Document {
     }
     else
     {
-      $name = $this->get_collection_name();
+      $name = $this->get_collection_class_name();
       if( ! isset(self::$collections[$name]))
       {
         self::$collections[$name] = new $name(NULL, NULL, NULL, get_class($this));
@@ -445,7 +445,7 @@ abstract class Mongo_Document {
    * Generates the collection name
    * @return  string
    */
-  protected function get_collection_name()
+  protected function get_collection_class_name()
   {
     return get_class($this).'_Collection';
   }
@@ -995,7 +995,7 @@ abstract class Mongo_Document {
       {
         throw new MongoException('Cannot insert empty array.');
       }
-      
+
       $err = $this->collection()->insert($values, $safe);
 
       if( $safe && $err['err'] )
@@ -1188,3 +1188,4 @@ abstract class Mongo_Document {
   }
 
 }
+

@@ -504,9 +504,17 @@ abstract class Mongo_Document {
     {
       if( ! isset($this->_related_objects[$name]))
       {
-        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
+        $foreign_field = isset($this->_references[$name]['foreign_field']) ? $this->_references[$name]['foreign_field'] : FALSE;
+        if ($foreign_field) {
+          $this->_related_objects[$name] = Mongo_Document::factory($model)
+            ->collection(TRUE)
+            ->find($foreign_field, $this->id);
+          return $this->_related_objects[$name];
+        }
+        $id_field = isset($this->_references[$name]['field']) ? $this->_references[$name]['field'] : "_$name";
         $value = $this->__get($id_field);
+
         if( ! empty($this->_references[$name]['multiple']))
         {
           $this->_related_objects[$name] = Mongo_Document::factory($model)

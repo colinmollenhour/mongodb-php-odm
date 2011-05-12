@@ -461,6 +461,13 @@ abstract class Mongo_Document {
    */
   public function __call($name, $arguments)
   {
+    // Workaround Reserved Keyword 'unset'
+    // http://php.net/manual/en/reserved.keywords.php
+    if($name == 'unset')
+    {
+      return $this->_unset($arguments[0]);
+    }
+
     $parts = explode('_', $name, 2);
     if( ! isset($parts[1]))
     {

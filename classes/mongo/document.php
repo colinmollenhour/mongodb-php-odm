@@ -147,6 +147,9 @@ abstract class Mongo_Document {
   const SAVE_UPDATE = 'update';
   const SAVE_UPSERT = 'upsert';
 
+  // Stores Last Save Action
+  protected $last_action = NULL;
+
   /**
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
@@ -461,6 +464,13 @@ abstract class Mongo_Document {
    */
   public function __call($name, $arguments)
   {
+    // Workaround Reserved Keyword 'unset'
+    // http://php.net/manual/en/reserved.keywords.php
+    if($name == 'unset')
+    {
+      return $this->_unset($arguments[0]);
+    }
+
     $parts = explode('_', $name, 2);
     if( ! isset($parts[1]))
     {
@@ -907,6 +917,16 @@ abstract class Mongo_Document {
   }
 
   /**
+   * Return last Save Action or NULL if no executed action
+   *
+   * @return  mixed  strings of constancts SAVE_INSERT, SAVE_UPDATE, SAVE_UPSERT or NULL
+   */
+  public function last_action()
+  {
+    return $this->last_action;
+  }
+
+  /**
    * Load the document from the database. The first parameter may be one of:
    *
    *  a falsey value - the object data will be used to construct the query
@@ -989,9 +1009,9 @@ abstract class Mongo_Document {
     // Insert new record if no _id or _id was set by user
     if( ! isset($this->_object['_id']) || isset($this->_changed['_id']))
     {
-      $action = self::SAVE_INSERT;
+      $this->last_action = self::SAVE_INSERT;
 
-      $this->before_save($action);
+      $this->before_save($this->last_action);
 
       $values = array();
       foreach($this->_changed as $name => $_true)
@@ -1033,9 +1053,9 @@ abstract class Mongo_Document {
     // Update assumed existing document
     else
     {
-      $action = self::SAVE_UPDATE;
+      $this->last_action = self::SAVE_UPDATE;
 
-      $this->before_save($action);
+      $this->before_save($this->last_action);
 
       if($this->_changed)
       {
@@ -1057,7 +1077,7 @@ abstract class Mongo_Document {
 
     $this->_changed = $this->_operations = array();
 
-    $this->after_save($action);
+    $this->after_save($this->last_action);
 
     return $this;
   }
@@ -1125,7 +1145,9 @@ abstract class Mongo_Document {
       throw new MongoException('Cannot upsert '.get_class($this).': no criteria');
     }
 
-    $this->before_save(self::SAVE_UPSERT);
+    $this->last_action = self::SAVE_UPSERT;
+
+    $this->before_save($this->last_action);
 
     $operations = self::array_merge_recursive_distinct($this->_operations, $operations);
 
@@ -1137,7 +1159,7 @@ abstract class Mongo_Document {
 
     $this->_changed = $this->_operations = array();
 
-    $this->after_save();
+    $this->after_save($this->last_action);
 
     return $this;
   }

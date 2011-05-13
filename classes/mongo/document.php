@@ -461,6 +461,13 @@ abstract class Mongo_Document {
    */
   public function __call($name, $arguments)
   {
+    // Workaround Reserved Keyword 'unset'
+    // http://php.net/manual/en/reserved.keywords.php
+    if($name == 'unset')
+    {
+        return $this->_unset($arguments[0]);
+    }
+
     $parts = explode('_', $name, 2);
     if( ! isset($parts[1]))
     {
@@ -626,6 +633,9 @@ abstract class Mongo_Document {
 
   /**
    * Unset a key
+   *
+   * Note: unset() method call for _unset() is defined in __call() method since 'unset' method name
+   *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @return Mongo_Document

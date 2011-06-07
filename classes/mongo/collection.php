@@ -240,7 +240,7 @@ class Mongo_Collection implements Iterator, Countable {
       if($field[0] == '$')
       {
         // $or and $where and possibly other special values
-        if($field == '$or')
+        if($field == '$or' && ! is_int(key($value)))
         {
           if( ! isset($this->_query['$or']))
           {

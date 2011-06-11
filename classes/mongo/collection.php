@@ -666,13 +666,16 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Perform an update, throw exception on errors.
-   * If multi update return number of documents updated on success
-   * Otherwise return whether or not an object was updated
-   * 
+   *
+   * Return values depend on type of update:
+   *   multiple     return number of documents updated on success
+   *   upsert       return upserted id if upsert resulted in new document
+   *   updatedExisting flag for all other cases
+   *
    * @param array $criteria
    * @param array $update
    * @param array $options 
-   * @return int|bool
+   * @return bool|int|MongoId
    * @throws MongoException on error
    */
   public function update_safe($criteria, $update, $options = array())
@@ -694,6 +697,11 @@ class Mongo_Collection implements Iterator, Countable {
     if($options['multiple']) {
       return $result['n'];
     }
+    // Return the upserted id if a document was upserted with a new _id
+    else if($options['upsert'] && ! $result['updatedExisting'] && isset($result['upserted'])) {
+      return $result['upserted'];
+    }
+    // Return the updatedExisting flag for single, non-upsert updates
     else {
       return $result['updatedExisting'];
     }

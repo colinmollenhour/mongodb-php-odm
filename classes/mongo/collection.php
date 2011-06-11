@@ -679,9 +679,18 @@ class Mongo_Collection implements Iterator, Countable {
   {
     $options = array_merge(array('safe' => TRUE, 'multiple' => FALSE, 'upsert' => FALSE), $options);
     $result = $this->update($criteria, $update, $options);
+
+    // In case 'safe' was overridden and disabled, just return the result
+    if( ! $options['safe']) {
+      return $result;
+    }
+
+    // According to the driver docs an exception should have already been thrown if there was an error, but just in case...
     if( ! $result['ok']) {
       throw new MongoException($result['err']);
     }
+
+    // Return the number of documents updated for multiple updates or the updatedExisting flag for single updates
     if($options['multiple']) {
       return $result['n'];
     }

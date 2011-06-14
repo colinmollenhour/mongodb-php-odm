@@ -708,6 +708,35 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+   * Remove, throw exception on errors.
+   *
+   * Returns number of documents removed if "safe", otherwise just if the operation was successfully sent.
+   *
+   * @param array $criteria
+   * @param array $options
+   * @return bool|int
+   * @throws MongoException on error
+   */
+  public function remove_safe($criteria, $options = array())
+  {
+    $options = array_merge(array('safe' => TRUE, 'justOne' => FALSE), $options);
+    $result = $this->remove($criteria, $options);
+
+    // In case 'safe' was overridden and disabled, just return the result
+    if( ! $options['safe']) {
+      return $result;
+    }
+
+    // According to the driver docs an exception should have already been thrown if there was an error, but just in case...
+    if( ! $result['ok']) {
+      throw new MongoException($result['err']);
+    }
+
+    // Return the number of documents removed
+    return $result['n'];
+  }
+
+  /**
    * Get an instance of the corresponding document model.
    *
    * @return  Mongo_Document

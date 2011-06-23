@@ -906,6 +906,16 @@ abstract class Mongo_Document {
   }
 
   /**
+  * Get the model data as a JSON string.
+  *
+  * @return  string  JSON
+  */
+  public function as_json()
+  {
+  	return JSON::str($this->as_array(FALSE));
+  }  
+  
+  /**
    * Return true if the document is loaded.
    *
    * @return  boolean

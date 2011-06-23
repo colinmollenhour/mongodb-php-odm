@@ -812,6 +812,16 @@ class Mongo_Collection implements Iterator, Countable {
   }
 
   /**
+  * Returns the current query results as a JSON string
+  *
+  * @return  string  JSON
+  */
+  public function as_json()
+  {
+  	return JSON::str($this->as_array(FALSE));
+  }  
+  
+  /**
    * Return an array of values or an associative array of keys and values
    *
    * @param   string $key

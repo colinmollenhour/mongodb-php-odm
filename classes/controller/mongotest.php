@@ -1,5 +1,7 @@
 <?php
 
+defined('SYSPATH') or die('No direct script access.');
+
 /* Row Data Gateway Pattern */
 class Model_Document_Collection extends Mongo_Collection {
   protected $name = 'mongotest';

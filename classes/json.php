@@ -1,4 +1,7 @@
 <?php
+
+defined('SYSPATH') or die('No direct script access.');
+
 /**
  * This json wrapper is included to provide a lenient decode method.
  *

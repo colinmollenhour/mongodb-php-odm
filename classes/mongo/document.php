@@ -1,4 +1,7 @@
 <?php
+
+defined('SYSPATH') or die('No direct script access.');
+
 /**
  * This class objectifies a Mongo document and can be used with one of the following design patterns:
  *

@@ -61,11 +61,11 @@ class Mongo_Collection implements Iterator, Countable {
   protected $db = 'default';
 
   /** Whether or not this collection is a gridFS collection
-   *  @var  boolean */
+   *  @var  bool */
   protected $gridFS = FALSE;
 
   /** The class name or instance of the corresponding document model or NULL if direct mode
-   *  @var  mixed */
+   *  @var  string */
   protected $_model;
 
   /** The cursor instance in use while iterating a collection
@@ -97,7 +97,8 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  string  $name  The collection name
    * @param  string  $db    The database configuration name
-   * @param  boolean $gridFS  Is the collection a gridFS instance?
+   * @param  bool    $gridFS  Is the collection a gridFS instance?
+   * @param  bool|string $model   Class name of template model for new documents
    */
   public function __construct($name = NULL, $db = 'default', $gridFS = FALSE, $model = FALSE)
   {
@@ -124,6 +125,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Reset the state of the query (must be called manually if re-using a collection for a new query)
    *
+   * @param bool $cursor_only
    * @return  Mongo_Collection
    */
   public function reset($cursor_only = FALSE)
@@ -238,7 +240,7 @@ class Mongo_Collection implements Iterator, Countable {
       if($field[0] == '$')
       {
         // $or and $where and possibly other special values
-        if($field == '$or')
+        if($field == '$or' && ! is_int(key($value)))
         {
           if( ! isset($this->_query['$or']))
           {
@@ -271,7 +273,8 @@ class Mongo_Collection implements Iterator, Countable {
    * Add fields to be returned by the query.
    *
    * @param   array $fields
-   * @return  Mongo_collection
+   * @param   int|bool $include
+   * @return  Mongo_Collection
    */
   public function fields($fields = array(), $include = 1)
   {
@@ -280,7 +283,7 @@ class Mongo_Collection implements Iterator, Countable {
     // Map array to hash
     if($fields == array_values($fields))
     {
-      $fields = array_fill_keys($fields, $include);
+      $fields = array_fill_keys($fields, (int) $include);
     }
 
     // Translate field aliases
@@ -295,7 +298,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Gives the database a hint about the query
    *
-   * @param   array
+   * @param array $key_pattern
    * @return  Mongo_Collection
    */
   public function hint(array $key_pattern)
@@ -306,7 +309,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sets whether this cursor will timeout
    *
-   * @param   boolean
+   * @param   bool $liveForever
    * @return  Mongo_Collection
    */
   public function immortal($liveForever = TRUE)
@@ -317,7 +320,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Limits the number of results returned
    *
-   * @param   int
+   * @param   int $num
    * @return  Mongo_Collection
    */
   public function limit($num)
@@ -328,7 +331,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Skips a number of results
    *
-   * @param   int
+   * @param   int $num
    * @return  Mongo_Collection
    */
   public function skip($num)
@@ -339,7 +342,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sets whether this query can be done on a slave
    *
-   * @param   boolean
+   * @param   bool $okay
    * @return  Mongo_Collection
    */
   public function slaveOkay($okay = TRUE)
@@ -360,8 +363,8 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sorts the results by given fields
    *
-   * @param   mixed  A sort criteria or a key (requires corresponding $value)
-   * @param   mixed  The direction if $fields is a key
+   * @param   array|string $fields  A sort criteria or a key (requires corresponding $value)
+   * @param   string|int   $direction The direction if $fields is a key
    * @return  Mongo_Collection
    */
   public function sort($fields, $direction = self::ASC)
@@ -398,7 +401,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sorts the results ascending by the given field
    *
-   * @param   string  The field name to sort by
+   * @param   string  $field The field name to sort by
    * @return  Mongo_Collection
    */
   public function sort_asc($field)
@@ -409,7 +412,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sorts the results descending by the given field
    *
-   * @param   string  The field name to sort by
+   * @param   string  $field The field name to sort by
    * @return  Mongo_Collection
    */
   public function sort_desc($field)
@@ -420,7 +423,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Sets whether this cursor will be left open after fetching the last results
    *
-   * @param   boolean
+   * @param   bool $tail
    * @return  Mongo_Collection
    */
   public function tailable($tail = TRUE)
@@ -432,7 +435,7 @@ class Mongo_Collection implements Iterator, Countable {
    * See if a cursor has an option to be set before executing the query.
    *
    * @param  string  $name
-   * @return boolean
+   * @return bool
    */
   public function has_option($name)
   {
@@ -514,7 +517,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Is the query executed yet?
    * 
-   * @return boolean
+   * @return bool
    */
   public function is_loaded()
   {
@@ -524,7 +527,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Is the query iterating yet?
    * 
-   * @return boolean
+   * @return bool
    */
   public function is_iterating()
   {
@@ -544,7 +547,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @return  Mongo_Collection
    */
-  public function load($skipBenchmark = FALSE)
+  public function load()
   {
     // Execute the query, add query to any thrown exceptions
     try
@@ -638,6 +641,12 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Perform a group aggregation and return the result or throw an exception on error
+   * @param string|array $keys
+   * @param array $initial
+   * @param string|MongoCode $reduce
+   * @param array $options
+   * @return
+   * @throws MongoException on error
    */
   public function group_safe($keys, $initial, $reduce, $options = array())
   {
@@ -657,28 +666,74 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Perform an update, throw exception on errors.
-   * If multi update return number of documents updated on success
-   * Otherwise return whether or not an object was updated
-   * 
+   *
+   * Return values depend on type of update:
+   *   multiple     return number of documents updated on success
+   *   upsert       return upserted id if upsert resulted in new document
+   *   updatedExisting flag for all other cases
+   *
    * @param array $criteria
    * @param array $update
    * @param array $options 
-   * @return int|bool
+   * @return bool|int|MongoId
    * @throws MongoException on error
    */
   public function update_safe($criteria, $update, $options = array())
   {
     $options = array_merge(array('safe' => TRUE, 'multiple' => FALSE, 'upsert' => FALSE), $options);
     $result = $this->update($criteria, $update, $options);
+
+    // In case 'safe' was overridden and disabled, just return the result
+    if( ! $options['safe']) {
+      return $result;
+    }
+
+    // According to the driver docs an exception should have already been thrown if there was an error, but just in case...
     if( ! $result['ok']) {
       throw new MongoException($result['err']);
     }
+
+    // Return the number of documents updated for multiple updates or the updatedExisting flag for single updates
     if($options['multiple']) {
       return $result['n'];
     }
+    // Return the upserted id if a document was upserted with a new _id
+    else if($options['upsert'] && ! $result['updatedExisting'] && isset($result['upserted'])) {
+      return $result['upserted'];
+    }
+    // Return the updatedExisting flag for single, non-upsert updates
     else {
       return $result['updatedExisting'];
     }
+  }
+
+  /**
+   * Remove, throw exception on errors.
+   *
+   * Returns number of documents removed if "safe", otherwise just if the operation was successfully sent.
+   *
+   * @param array $criteria
+   * @param array $options
+   * @return bool|int
+   * @throws MongoException on error
+   */
+  public function remove_safe($criteria, $options = array())
+  {
+    $options = array_merge(array('safe' => TRUE, 'justOne' => FALSE), $options);
+    $result = $this->remove($criteria, $options);
+
+    // In case 'safe' was overridden and disabled, just return the result
+    if( ! $options['safe']) {
+      return $result;
+    }
+
+    // According to the driver docs an exception should have already been thrown if there was an error, but just in case...
+    if( ! $result['ok']) {
+      throw new MongoException($result['err']);
+    }
+
+    // Return the number of documents removed
+    return $result['n'];
   }
 
   /**
@@ -725,7 +780,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Returns the current query results as an array
    *
-   * @param   boolean $objects  Pass FALSE to get raw data
+   * @param   bool $objects  Pass FALSE to get raw data
    * @return  array
    */
   public function as_array( $objects = TRUE )
@@ -892,7 +947,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Implement MongoCursor#hasNext to ensure that the cursor is loaded
    *
-   * @return  boolean
+   * @return  bool
    */
   public function hasNext()
   {
@@ -902,7 +957,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Implement MongoCursor#getNext so that the return value is a Mongo_Document instead of array
    *
-   * @return  Mongo_Document
+   * @return  array|Mongo_Document
    */
   public function getNext()
   {
@@ -922,6 +977,8 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Iterator: current
+   *
+   * @return array|Mongo_Document
    */
   public function current()
   {
@@ -943,6 +1000,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Iterator: key
+   * @return string
    */
   public function key()
   {
@@ -954,7 +1012,7 @@ class Mongo_Collection implements Iterator, Countable {
    */
   public function next()
   {
-    return $this->_cursor->next();
+    $this->_cursor->next();
   }
 
   /**
@@ -985,6 +1043,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /**
    * Iterator: valid
+   * @return bool
    */
   public function valid()
   {

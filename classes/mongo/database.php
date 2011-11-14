@@ -1,4 +1,7 @@
 <?php
+
+defined('SYSPATH') or die('No direct script access.');
+
 /**
  * This class wraps the functionality of Mongo (connection) and MongoDB (database object) into one class.
  * When used with Kohana it can be instantiated simply by:

@@ -1,4 +1,7 @@
 <?php
+
+defined('SYSPATH') or die('No direct script access.');
+
 /**
  * This class objectifies a Mongo document and can be used with one of the following design patterns:
  *
@@ -902,6 +905,16 @@ abstract class Mongo_Document {
     return $array;
   }
 
+  /**
+  * Get the model data as a JSON string.
+  *
+  * @return  string  JSON
+  */
+  public function as_json()
+  {
+  	return JSON::str($this->as_array(FALSE));
+  }  
+  
   /**
    * Return true if the document is loaded.
    *

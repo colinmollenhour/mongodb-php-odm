@@ -1,4 +1,7 @@
 <?php
+
+defined('SYSPATH') or die('No direct script access.');
+
 /**
  * This class can be used in any of the following ways:
  *
@@ -808,6 +811,16 @@ class Mongo_Collection implements Iterator, Countable {
     return $array;
   }
 
+  /**
+  * Returns the current query results as a JSON string
+  *
+  * @return  string  JSON
+  */
+  public function as_json()
+  {
+  	return JSON::str($this->as_array(FALSE));
+  }  
+  
   /**
    * Return an array of values or an associative array of keys and values
    *

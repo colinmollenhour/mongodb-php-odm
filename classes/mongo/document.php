@@ -1147,7 +1147,7 @@ abstract class Mongo_Document {
 
     $this->_changed = $this->_operations = array();
 
-    $this->after_save();
+    $this->after_save(self::SAVE_UPSERT);
 
     return $this;
   }

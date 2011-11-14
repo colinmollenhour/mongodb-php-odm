@@ -852,7 +852,7 @@ abstract class Mongo_Document {
   {
     if($clean === TRUE)
     {
-      $this->before_load();
+      $this->before_load($values);
 
       $this->_object = (array) $values;
       $this->_loaded = ! empty($this->_object);
@@ -1104,8 +1104,9 @@ abstract class Mongo_Document {
 
   /**
    * Override this method to take actions before the values are loaded
+   * @param    array   $values
    */
-  protected function before_load(){}
+  protected function before_load($values){}
 
   /**
    * Override this method to take actions after the values are loaded

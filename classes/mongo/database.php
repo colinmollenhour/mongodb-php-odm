@@ -364,7 +364,7 @@ class Mongo_Database {
    *
    * @param string $collection
    * @param array $command
-   * @return array
+   * @return null|array
    * @throws MongoException
    */
   public function findAndModify($collection, $command)
@@ -377,6 +377,8 @@ class Mongo_Database {
   /**
    * Get the next auto-increment value for the given key
    *
+   * @param string $key
+   * @param string $collection
    * @return int
    * @throws MongoException
    */

@@ -620,7 +620,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Simple findAndModify helper
    * 
-   * @param array $command
+   * @param null|array $command
    * @return array
    */
   public function findAndModify($command)
@@ -631,7 +631,7 @@ class Mongo_Collection implements Iterator, Countable {
   /**
    * Get the next auto-increment value for this collection
    *
-   * @return int
+   * @return null|int
    * @throws MongoException
    */
   public function get_auto_increment()

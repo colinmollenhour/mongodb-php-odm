@@ -33,14 +33,14 @@
  * @method array dropCollection()  dropCollection( mixed $coll )
  * @method boolean forceError()  forceError()
  * @method array getDBRef()  getDBRef( array $ref )
- * @method MongoGridFS getGridFS()  getGridFS( string $arg1 = "fs", string $arg2 = NULL )
+ * @//method MongoGridFS getGridFS()  getGridFS( string $arg1 = "fs", string $arg2 = NULL )
  * @method int getProfilingLevel()  getProfilingLevel()
  * @method array lastError()  lastError()
  * @method array listCollections()  listCollections()
  * @method array prevError()  prevError()
  * @method array repair()  repair( boolean $preserve_cloned_files = FALSE, boolean $backup_original_files = FALSE )
  * @method array resetError()  resetError()
- * @method MongoCollection selectCollection()  selectCollection( string $name )
+ * @//method Mongo_Collection selectCollection( string $name )
  * @method int setProfilingLevel()  setProfilingLevel( int $level )
  *
  * @author  Colin Mollenhour
@@ -75,6 +75,8 @@ class Mongo_Database {
    *  @static  array */
   protected static $instances = array();
 
+  public static $configs = array();
+  
   /**
    * Get a Mongo_Database instance. Configuration options are:
    *
@@ -96,8 +98,13 @@ class Mongo_Database {
     {
       if ($config === NULL)
       {
-        // Load the configuration for this database
-        $config = Kohana::$config->load('mongo')->$name;
+          if (isset(self::$configs[$name])) {
+              $config = self::$configs[$name];
+              if ($config instanceof Closure) $config = $config($name);
+          } else if (class_exists('Kohana')) {
+            // Load the configuration for this database
+            $config = Kohana::$config->load('mongo')->$name;
+          }
       }
 
       new self($name,$config);
@@ -364,7 +371,7 @@ class Mongo_Database {
    *
    * @param string $collection
    * @param array $command
-   * @return array
+   * @return null|array
    * @throws MongoException
    */
   public function findAndModify($collection, $command)
@@ -377,6 +384,8 @@ class Mongo_Database {
   /**
    * Get the next auto-increment value for the given key
    *
+   * @param string $key
+   * @param string $collection
    * @return int
    * @throws MongoException
    */

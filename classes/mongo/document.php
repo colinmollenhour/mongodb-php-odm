@@ -141,7 +141,7 @@
  * @package Mongo_Database
  */
 
-abstract class Mongo_Document {
+abstract class Mongo_Document implements ArrayAccess {
 
   const SAVE_INSERT = 'insert';
   const SAVE_UPDATE = 'update';
@@ -1205,5 +1205,21 @@ abstract class Mongo_Document {
     return $merged;
   }
 
+   
+  public function offsetExists( $offset ) {
+    return isset($this->{$offset});
+  }
+
+  public function offsetGet( $offset ) {
+    return $this->{$offset};
+  }
+
+  public function offsetSet( $offset, $value ) {
+    $this->{$offset} = $value;
+  }
+
+  public function offsetUnset( $offset ) {
+    unset($this->{$offset});
+  }
 }
 

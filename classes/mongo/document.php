@@ -354,6 +354,9 @@ abstract class Mongo_Document implements ArrayAccess {
   public function __isset($name)
   {
     $name = $this->get_field_name($name, FALSE);
+    if (isset($this->_object[$name])) return true;
+    // check for dirties...
+    if ($this->get($name)) return true;
     return isset($this->_object[$name]);
   }
 
@@ -582,6 +585,8 @@ abstract class Mongo_Document implements ArrayAccess {
    */
   public function __set($name, $value)
   {
+
+      
     $name = $this->get_field_name($name, FALSE);
 
     // Automatically save references to other Mongo_Document objects
@@ -621,6 +626,17 @@ abstract class Mongo_Document implements ArrayAccess {
     return $this;
   }
 
+  /** Get the value for a key (using dot notation)  */
+  public function get($name, $default = null) {
+    if( ! strpos($name, '.')) {
+        if ($default !== null && !isset($this[$name])) return $default;
+        return $this->__get($name);
+    }
+    $ref = $this->get_field_ref($this->_object, $name, false, $default);
+    return $ref;
+  }
+  
+  
   /**
    * Set the value for a key. This function must be used when updating nested documents.
    *
@@ -628,7 +644,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   mixed   $value The data to be saved
    * @return  Mongo_Document
    */
-  public function set($name, $value)
+  public function set($name, $value, $setDirty = false)
   {
     if( ! strpos($name, '.')) {
       $this->__set($name, $value);
@@ -636,7 +652,13 @@ abstract class Mongo_Document implements ArrayAccess {
     }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true);
+        $ref = $value;
+        return $this;
+    }
   }
 
   /**
@@ -648,11 +670,16 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @return Mongo_Document
    */
-  public function _unset($name)
+  public function _unset($name, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$unset'][$name] = 1;
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $this->unset_field_ref($this->_object, $name);
+        return $this;
+    }
   }
 
   /**
@@ -683,7 +710,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   mixed   $value The value to push
    * @return  Mongo_Document
    */
-  public function push($name, $value)
+  public function push($name, $value, $setDirty = true)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -701,7 +728,18 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$push'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true);
+        if ($ref === null) {
+            $ref = array($value);
+        } else {
+            if (!is_array($ref)) throw new Exception("Value '$name' cannot be set as an array"); // $ref = array($ref);
+            array_push($ref, $value);
+        }
+        return $this;
+    }
   }
 
   /**
@@ -1229,5 +1267,40 @@ abstract class Mongo_Document implements ArrayAccess {
   public function offsetUnset( $offset ) {
     unset($this->{$offset});
   }
+
+  protected function &get_field_ref(&$arr, $name, $create = false, $default = null) {
+    $keys = explode('.', $name);
+    $data =& $arr;
+    foreach($keys as $key) {
+        if (!isset($data[$key])) {
+            if ($create) {
+                $data[$key] = $default;
+            } else {
+                $nil = $default;
+                return $nil;
+            }
+        }
+        $data =& $data[$key];
+    }      
+    return $data;
+  }  
+  
+  protected function unset_field_ref(&$arr, $name) {
+    $keys = explode('.', $name);
+    $data =& $arr;
+    foreach($keys as $i => $key) {
+        if (isset($data[$key])) {
+            if ($i == count($keys)-1) {
+                unset($data[$key]);
+                return;
+            }
+            $data =& $data[$key];
+        } else {
+            return;
+        }
+        
+    }      
+  }  
+  
 }
 

@@ -147,6 +147,8 @@ abstract class Mongo_Document implements ArrayAccess {
   const SAVE_UPDATE = 'update';
   const SAVE_UPSERT = 'upsert';
 
+  public static $models = array ();
+  
   /**
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
@@ -157,7 +159,13 @@ abstract class Mongo_Document implements ArrayAccess {
    */
   public static function factory($name, $load = NULL)
   {
-    $class = 'Model_'.implode('_',array_map('ucfirst', explode('_',$name)));
+      if (isset(self::$models[$name])) {
+          $class = self::$models[$name];
+      } else if (strpos($name, '\\')) {
+          $class = $name;
+      } else {
+        $class = 'Model_'.implode('_',array_map('ucfirst', explode('_',$name)));
+      }
     return new $class($load);
   }
 

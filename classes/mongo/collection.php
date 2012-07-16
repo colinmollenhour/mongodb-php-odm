@@ -1121,16 +1121,18 @@ class Mongo_Collection implements Iterator, Countable {
 
   
   /** Wrapper for geoNear command
+   * @param $options Additional options like distanceMultiplier, spherical
+   * @param $result Reference to variable, where original result object will be stored
    * @return Array of Mongo_Document objects with distance set as $distanceKey (_distance by default)
    */
   public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance') {
-	  $options['geoNear'] = $this->name;
-	  $options['near'] = $near;
+      $options = array_merge(
+              ['geoNear' => $this->name, 'near' => $near]
+              , $options);
 	  if ($query) $options['query'] = $query;
 	  if ($maxDistance) $options['maxDistance'] = $maxDistance;
 	  if ($num) $options['num'] = $num;
-	  $result = $this->db()->command($options);
-//	  var_dump($result);
+	  $result = $this->db()->command_safe($options);
 	  $objects = $result['results'];
 	  $docs = array();
 	  foreach($objects as $object) {

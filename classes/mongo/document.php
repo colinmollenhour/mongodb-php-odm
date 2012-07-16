@@ -628,10 +628,10 @@ abstract class Mongo_Document implements ArrayAccess {
 
   /** Get the value for a key (using dot notation)  */
   public function get($name, $default = null) {
-    if( ! strpos($name, '.')) {
-        if ($default !== null && !isset($this[$name])) return $default;
-        return $this->__get($name);
-    }
+//    if( ! strpos($name, '.')) {
+//        if ($default !== null && !isset($this[$name])) return $default;
+//        return $this->__get($name);
+//    }
     $ref = $this->get_field_ref($this->_object, $name, false, $default);
     return $ref;
   }

@@ -443,4 +443,10 @@ class Mongo_Database {
     call_user_func($this->_stop_callback, $token);
   }
 
+  
+  /** @return Mongo */
+  public function getConnection() {
+      return $this->_connection;
+  }
+  
 }

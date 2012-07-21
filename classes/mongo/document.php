@@ -161,7 +161,7 @@ abstract class Mongo_Document implements ArrayAccess {
   {
       if (isset(self::$models[$name])) {
           $class = self::$models[$name];
-      } else if (strpos($name, '\\')) {
+      } else if (strpos($name, '\\') !== false) {
           $class = $name;
       } else {
         $class = 'Model_'.implode('_',array_map('ucfirst', explode('_',$name)));

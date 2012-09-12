@@ -1079,7 +1079,11 @@ class Mongo_Collection implements Iterator, Countable {
   public function inspect()
   {
     $query = array();
-    if($this->_query) $query[] = JSON::str($this->_query);
+    if($this->_query) {
+      $query[] = JSON::str($this->_query);
+    } else {
+      $query[] = '{}';
+    }
     if($this->_fields) $query[] = JSON::str($this->_fields);
     $query = "db.$this->name.find(".implode(',',$query).")";
     foreach($this->_options as $key => $value)

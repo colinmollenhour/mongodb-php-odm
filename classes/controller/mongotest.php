@@ -43,8 +43,10 @@ class Controller_Mongotest extends Controller {
 
   public function assert($desc, $condition)
   {
-    if($condition)
+    if ($condition)
+	{
       echo $desc.' <span class="pass">OK</span><br/>';
+	}
     else
     {
       echo $desc.' <span class="fail">FAIL</span><br/>';
@@ -67,7 +69,7 @@ class Controller_Mongotest extends Controller {
   {
     $args = func_get_args(); $str = array_shift($args);
     echo "<pre>$str</pre>";
-    foreach($args as $arg) echo Kohana::debug($arg);
+    foreach ($args as $arg) echo Kohana::debug($arg);
   }
 
   public function setup()
@@ -103,7 +105,7 @@ class Controller_Mongotest extends Controller {
       ),
     );
     $this->out('BEFORE',$data);
-    $doc = new Model_Document();
+    $doc = new Model_Document;
     $doc->load_values($data);
     $doc->save();
     $this->assert('document loaded after save', $doc->loaded() === TRUE);
@@ -114,7 +116,7 @@ class Controller_Mongotest extends Controller {
     $id = $doc->id;
     $doc = new Model_Document($id);
     $doc->load();
-    $this->assert('document found', $doc->loaded() && $doc->name == 'mongo');
+    $this->assert('document found', $doc->loaded() AND $doc->name == 'mongo');
 
     $this->test('UPDATE Document');
     $doc->size = 'huge';
@@ -127,15 +129,15 @@ class Controller_Mongotest extends Controller {
     $this->assert('counter incremented', $old + 1 === $doc->counter);
 
     $this->test('UPSERT NON-EXISTING DOCUMENT');
-    $doc = new Model_Document();
+    $doc = new Model_Document;
     $doc->name = 'Bugs Bunny';
     $doc->push('friends','Daffy Duck');
     $doc->upsert();
     $doc->load();
-    $this->assert('document inserted on upsert', !empty($doc->id));
+    $this->assert('document inserted on upsert', ! empty($doc->id));
 
     $this->test('UPSERT EXISTING DOCUMENT');
-    $doc = new Model_Document();
+    $doc = new Model_Document;
     $doc->name = 'Bugs Bunny';
     $doc->push('friends','Elmer Fudd');
     $doc->upsert();
@@ -149,7 +151,7 @@ class Controller_Mongotest extends Controller {
 
     $this->test('INSERT Document WITH _id');
     $data = array('name' => 'mongo', 'counter' => 10, 'set' => array('foo','bar','baz'));
-    $doc = new Model_Document();
+    $doc = new Model_Document;
     $doc->id = 'test_doc';
     $doc->load_values($data)->save();
     $doc = new Model_Document('test_doc');
@@ -164,7 +166,7 @@ class Controller_Mongotest extends Controller {
 
     $this->test('INSERT MULTIPLE');
     $batch = array();
-    for($i = 0; $i < 20; $i++){
+    for ($i = 0; $i < 20; $i++){
       $batch[] = array('name' => base64_encode(rand(0xFFF,0xFFFF)), 'number' => $i);
     }
     $col->batchInsert($batch);
@@ -174,8 +176,8 @@ class Controller_Mongotest extends Controller {
     $col->reset()->find('{number: { $gt: 10 }}')->limit(6)->sort_asc('name');
     $this->assert('collection limit', count($col->as_array()) <= 6);
     $last = '';
-    foreach($col as $doc){
-      $this->assert("$doc->name: $doc->number ($doc->id)", $doc->number > 10 && $last < $doc->name);
+    foreach ($col as $doc){
+      $this->assert("$doc->name: $doc->number ($doc->id)", $doc->number > 10 AND $last < $doc->name);
       $last = $doc->name;
     }
 
@@ -186,7 +188,7 @@ class Controller_Mongotest extends Controller {
   public function action_reference()
   {
     $this->test('CREATE DOCUMENT WITH REFERENCED DOCUMENT');
-    $doc = new Model_Document();
+    $doc = new Model_Document;
     $doc->id = 'foo';
     $doc->other = Mongo_Document::factory('other');
     $doc->other->bar = 'baz';
@@ -203,7 +205,7 @@ class Controller_Mongotest extends Controller {
     $this->assert('doc id is expected', $doc0->id == 'foo');
 
     $this->test('LOAD MULTIPLE REFERENCED DOCUMENTS FROM ARRAY OF _ids');
-    for($i = 0; $i < 3; $i++){
+    for ($i = 0; $i < 3; $i++){
       $newdoc = Mongo_Document::factory('other')->load_values(array('id' => 'more'.$i, 'foo' => 'bar'.$i))->save();
       $doc->push('_lots',$newdoc->id);
     }

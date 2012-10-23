@@ -102,9 +102,9 @@ class Mongo_Database {
   public static function instance($name = NULL, array $config = NULL)
   {
     if ($name === NULL)
-	{
-	  $name = self::$default;
-	}
+    {
+      $name = self::$default;
+    }
     if( ! isset(self::$instances[$name]) )
     {
       if ($config === NULL)

@@ -412,10 +412,10 @@ abstract class Mongo_Document {
     {
       if($this->name)
       {
-	    if ($this->db === NULL)
-		{
-		  $this->db = Mongo_Database::$default;
-		}
+        if ($this->db === NULL)
+        {
+          $this->db = Mongo_Database::$default;
+        }
         return new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));
       }
       else
@@ -430,10 +430,10 @@ abstract class Mongo_Document {
       $name = "$this->db.$this->name.$this->gridFS";
       if( ! isset(self::$collections[$name]))
       {
-	    if ($this->db === NULL)
-		{
-		  $this->db = Mongo_Database::$default;
-		}
+        if ($this->db === NULL)
+        {
+          $this->db = Mongo_Database::$default;
+        }
         self::$collections[$name] = new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));
       }
       return self::$collections[$name];

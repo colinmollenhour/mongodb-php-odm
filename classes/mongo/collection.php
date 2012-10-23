@@ -125,10 +125,10 @@ class Mongo_Collection implements Iterator, Countable {
   {
     if($name !== NULL)
     {
-	  if ($db === NULL)
-	  {
-	    $db = Mongo_Database::$default;
-	  }
+      if ($db === NULL)
+      {
+        $db = Mongo_Database::$default;
+      }
       $this->db = $db;
       $this->name = $name;
       $this->gridFS = $gridFS;

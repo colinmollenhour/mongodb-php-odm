@@ -1167,7 +1167,7 @@ abstract class Mongo_Document {
     $this->before_delete();
     $criteria = array('_id' => $this->_object['_id']);
 
-    if( ! $this->collection()->remove($criteria, TRUE))
+    if( ! $this->collection()->remove($criteria, array('justOne' => true)))
     {
       throw new MongoException('Failed to delete '.get_class($this));
     }

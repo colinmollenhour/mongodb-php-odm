@@ -78,6 +78,11 @@ class Mongo_Database {
   /** Mongo_Database instances
    *  @static  array */
   protected static $instances = array();
+  
+  /**
+   * @var   string     default db to use
+   */
+  public static $default = 'default';
 
   /**
    * Get a Mongo_Database instance. Configuration options are:
@@ -94,8 +99,12 @@ class Mongo_Database {
    * @return  Mongo_Database
    * @static
    */
-  public static function instance($name = 'default', array $config = NULL)
+  public static function instance($name = NULL, array $config = NULL)
   {
+    if ($name === NULL)
+	{
+	  $name = self::$default;
+	}
     if( ! isset(self::$instances[$name]) )
     {
       if ($config === NULL)

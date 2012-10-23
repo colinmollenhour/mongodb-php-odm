@@ -79,7 +79,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /** The database configuration name (passed to Mongo_Database::instance() )
    *  @var  string  */
-  protected $db = 'default';
+  protected $db;
 
   /** Whether or not this collection is a gridFS collection
    *  @var  bool */
@@ -121,10 +121,14 @@ class Mongo_Collection implements Iterator, Countable {
    * @param  bool    $gridFS  Is the collection a gridFS instance?
    * @param  bool|string $model   Class name of template model for new documents
    */
-  public function __construct($name = NULL, $db = 'default', $gridFS = FALSE, $model = FALSE)
+  public function __construct($name = NULL, $db = NULL, $gridFS = FALSE, $model = FALSE)
   {
     if($name !== NULL)
     {
+      if ($db === NULL)
+      {
+        $db = Mongo_Database::$default;
+      }
       $this->db = $db;
       $this->name = $name;
       $this->gridFS = $gridFS;

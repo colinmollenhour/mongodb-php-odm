@@ -33,7 +33,6 @@
  * @method array dropCollection( mixed $coll )
  * @method bool forceError()
  * @method array getDBRef( array $ref )
- * @method MongoGridFS getGridFS( string $arg1 = "fs", string $arg2 = NULL )
  * @method int getProfilingLevel()
  * @method array getReadPreference()
  * @method bool getSlaveOkay()
@@ -42,7 +41,6 @@
  * @method array prevError()
  * @method array repair( bool $preserve_cloned_files = FALSE, bool $backup_original_files = FALSE )
  * @method array resetError()
- * @method MongoCollection selectCollection( string $name )
  * @method int setProfilingLevel( int $level )
  * @method bool setReadPreference(int $read_preference, array $tags = array())
  * @method bool setSlaveOkay(bool $ok = true)
@@ -268,6 +266,7 @@ class Mongo_Database {
    *
    * @param  string  $name
    * @param  array  $arguments
+   * @throws Exception
    * @return mixed
    */
   public function __call($name, $arguments)
@@ -433,6 +432,7 @@ class Mongo_Database {
    *
    * @param string $group
    * @param string $query
+   * @return mixed
    */
   public function profiler_start($group, $query)
   {

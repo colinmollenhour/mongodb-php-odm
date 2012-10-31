@@ -48,7 +48,7 @@ class JSON {
   /**
    * Encode an array or object into a Mongo-like JSON string
    *
-   * @param  array|object $value
+   * @param  mixed $value
    * @return  string
    */
   public static function str($value)

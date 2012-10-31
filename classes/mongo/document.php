@@ -151,8 +151,8 @@ abstract class Mongo_Document {
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
    *
-   * @param   string  model name
-   * @param   mixed   optional _id of document to operate on or criteria for loading (if you expect it exists)
+   * @param   string  $name
+   * @param   mixed   $load
    * @return  Mongo_Document
    */
   public static function factory($name, $load = NULL)
@@ -258,8 +258,8 @@ abstract class Mongo_Document {
    * Instantiate a new Document object. If an id or other data is passed then it will be assumed that the
    * document exists in the database and updates will be performaed without loading the document first.
    *
-   * @param   string  The _id of the document to operate on or criteria used to load
-   * @return  void
+   * @param   string  $id _id of the document to operate on or criteria used to load
+   * @return  Mongo_Document
    */
   public function __construct($id = NULL)
   {
@@ -284,6 +284,7 @@ abstract class Mongo_Document {
    *
    * @param  string  $field  The field name being set
    * @param  mixed  $value  The value being set
+   * @return mixed|\MongoId|string
    */
   protected function _cast($field, $value)
   {
@@ -297,15 +298,14 @@ abstract class Mongo_Document {
           if( (string) $id == $value)
             return $id;
         }
-      default:
-        return $value;
     }
+    return $value;
   }
 
   /**
    * This function translates an alias to a database field name.
    * Aliases are defined in $this->_aliases, and id is always aliased to _id.
-   * You can override this to disable alises or define your own aliasing technique.
+   * You can override this to disable aliases or define your own aliasing technique.
    *
    * @param   string  $name  The aliased field name
    * @param   boolean $dot_allowed  Use FALSE if a dot is not allowed in the field name for better performance
@@ -331,7 +331,7 @@ abstract class Mongo_Document {
   /**
    * Returns the attributes that should be serialized.
    *
-   * @return  void
+   * @return  array
    */
   public function __sleep()
   {
@@ -341,6 +341,7 @@ abstract class Mongo_Document {
   /**
    * Checks if a field is set
    *
+   * @param   string   $name
    * @return  boolean  field is set
    */
   public function __isset($name)
@@ -352,6 +353,7 @@ abstract class Mongo_Document {
   /**
    * Unset a field
    *
+   * @param   string  $name
    * @return  void
    */
   public function __unset($name)
@@ -465,6 +467,7 @@ abstract class Mongo_Document {
    *
    * @param  string $name
    * @param  array  $arguments
+   * @throws Exception
    * @return Mongo_Collection
    */
   public function __call($name, $arguments)
@@ -479,7 +482,7 @@ abstract class Mongo_Document {
     $parts = explode('_', $name, 2);
     if( ! isset($parts[1]))
     {
-      trigger_error('Method not found by '.get_class($this).': '.$name);
+      throw new Exception('Method not found by '.get_class($this).': '.$name);
     }
 
     switch($parts[0])
@@ -487,7 +490,7 @@ abstract class Mongo_Document {
       case 'find':
         $search = $parts[1];
         if( ! isset($this->_searches[$search])){
-          trigger_error('Predefined search not found by '.get_class($this).': '.$search);
+          throw new Exception('Predefined search not found by '.get_class($this).': '.$search);
         }
         return Mongo_Document::factory($this->_searches[$search]['model'])
                 ->collection(TRUE)
@@ -495,7 +498,7 @@ abstract class Mongo_Document {
       break;
 
       default:
-        trigger_error('Method not found by '.get_class($this).': '.$name);
+        throw new Exception('Method not found by '.get_class($this).': '.$name);
       break;
     }
   }
@@ -507,7 +510,7 @@ abstract class Mongo_Document {
    *  - A search() result
    *  - A field's value
    *
-   * @param   string  field name
+   * @param   string  $name field name
    * @return  mixed
    */
   public function __get($name)
@@ -576,9 +579,10 @@ abstract class Mongo_Document {
    * $doc->address['city'] = 'Knoxville';
    * </code>
    *
-   * @param   string  field name
-   * @param   mixed   new field value
-   * @return  mixed
+   * @param string  $name  field name
+   * @param mixed   $value
+   * @throws Exception
+   * @return  void
    */
   public function __set($name, $value)
   {
@@ -611,6 +615,10 @@ abstract class Mongo_Document {
     $this->_changed[$name] = TRUE;
   }
 
+  /**
+   * @param $name
+   * @return Mongo_Document
+   */
   protected function _set_dirty($name)
   {
     if($pos = strpos($name,'.'))
@@ -804,6 +812,7 @@ abstract class Mongo_Document {
    * Bit operators
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   array   $value
    * @return  Mongo_Document
    */
   public function bit($name,$value)
@@ -852,8 +861,8 @@ abstract class Mongo_Document {
    * Load all of the values in an associative array. Ignores all fields
    * not in the model.
    *
-   * @param   array    field => value pairs
-   * @param   boolean  values are clean (from database)?
+   * @param   array    $values  field => value pairs
+   * @param   boolean  $clean   values are clean (from database)?
    * @return  Mongo_Document
    */
   public function load_values($values, $clean = FALSE)
@@ -881,7 +890,7 @@ abstract class Mongo_Document {
   /**
    * Get the model data as an associative array.
    *
-   * @param   boolean  retrieve values directly from _object
+   * @param   boolean  $clean  retrieve values directly from _object
    * @return  array  field => value
    */
   public function as_array( $clean = FALSE )
@@ -932,8 +941,9 @@ abstract class Mongo_Document {
    *  an non-array value - the query will be assumed to be for an _id of this value
    *  an array - the array will be used for the query
    *
-   * @param   array  specify additional criteria
-   * @param   array  specify the fields to return
+   * @param   array  $criteria  specify additional criteria
+   * @param   array  $fields    specify the fields to return
+   * @throws  MongoException
    * @return  boolean  TRUE if the load succeeded
    */
   public function load($criteria = array(), array $fields = array())
@@ -996,13 +1006,22 @@ abstract class Mongo_Document {
   /**
    * Save the document to the database. For newly created documents the _id will be retrieved.
    *
-   * @param   boolean  $safe  If FALSE the insert status will not be checked
+   * @param   array|bool  $options  Insert options ('safe' defaults to true)
+   * @throws  MongoException
    * @return  Mongo_Document
    */
-  public function save($safe = TRUE)
+  public function save($options = TRUE)
   {
     // Update references to referenced models
-    $this->_update_references($safe);
+    $this->_update_references();
+
+    // Convert old bool argument to options array
+    if (is_bool($options)) {
+      $options = array('safe' => $options);
+    }
+    if ( ! isset($options['safe'])) {
+      $options['safe'] = TRUE;
+    }
 
     // Insert new record if no _id or _id was set by user
     if( ! isset($this->_object['_id']) || isset($this->_changed['_id']))
@@ -1022,9 +1041,9 @@ abstract class Mongo_Document {
         throw new MongoException('Cannot insert empty array.');
       }
 
-      $err = $this->collection()->insert($values, $safe);
+      $err = $this->collection()->insert($values, $options);
 
-      if( $safe && $err['err'] )
+      if( $options['safe'] && $err['err'] )
       {
         throw new MongoException('Unable to insert '.get_class($this).': '.$err['err']);
       }
@@ -1080,7 +1099,10 @@ abstract class Mongo_Document {
     return $this;
   }
 
-  protected function _update_references($safe = TRUE)
+  /**
+   * Updates references but does not save models to avoid infinite loops
+   */
+  protected function _update_references()
   {
     foreach($this->_references as $name => $ref)
     {
@@ -1134,6 +1156,7 @@ abstract class Mongo_Document {
    * Upsert the document, does not retrieve the _id of the upserted document.
    *
    * @param   array $operations
+   * @throws  MongoException
    * @return  Mongo_Document
    */
   public function upsert($operations = array())
@@ -1164,6 +1187,7 @@ abstract class Mongo_Document {
    * Delete the current document using the current data. The document does not have to be loaded.
    * Use $doc->collection()->remove($criteria) to delete multiple documents.
    *
+   * @throws  MongoException
    * @return  Mongo_Document
    */
   public function delete()

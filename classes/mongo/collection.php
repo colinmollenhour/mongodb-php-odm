@@ -56,7 +56,8 @@
  * @author  Colin Mollenhour
  * @package Mongo_Database
  */
-class Mongo_Collection implements Iterator, Countable {
+class Mongo_Collection implements Iterator, Countable
+{
 
   const ASC = 1;
   const DESC = -1;
@@ -236,6 +237,8 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   mixed $query  An array of paramters or a key
    * @param   mixed $value  If $query is a key, this is the value
+   * @throws  MongoCursorException
+   * @throws  Exception
    * @return  Mongo_Collection
    */
   public function find($query = array(), $value = NULL)
@@ -299,6 +302,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   array $fields
    * @param   int|bool $include
+   * @throws  MongoCursorException
    * @return  Mongo_Collection
    */
   public function fields($fields = array(), $include = 1)
@@ -390,6 +394,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   array|string $fields  A sort criteria or a key (requires corresponding $value)
    * @param   string|int   $direction The direction if $fields is a key
+   * @throws  MongoCursorException
    * @return  Mongo_Collection
    */
   public function sort($fields, $direction = self::ASC)
@@ -493,6 +498,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  string  $name
    * @param  mixed  $value
+   * @throws MongoCursorException
    * @return Mongo_Collection
    */
   public function set_option($name, $value)
@@ -527,6 +533,7 @@ class Mongo_Collection implements Iterator, Countable {
    * Unset a cursor option to be set before executing the query.
    *
    * @param  string  $name
+   * @throws MongoCursorException
    * @return Mongo_Collection
    */
   public function unset_option($name)
@@ -548,10 +555,11 @@ class Mongo_Collection implements Iterator, Countable {
   {
     return !!$this->_cursor;
   }
-  
+
   /**
    * Is the query iterating yet?
-   * 
+   *
+   * @throws Exception
    * @return bool
    */
   public function is_iterating()
@@ -570,6 +578,8 @@ class Mongo_Collection implements Iterator, Countable {
    * Instantiates a cursor, after this is called the query cannot be modified.
    * This is automatically called when the iterator initializes (rewind).
    *
+   * @throws  MongoCursorException
+   * @throws  MongoException
    * @return  Mongo_Collection
    */
   public function load()
@@ -601,6 +611,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  mixed  $query  An _id, a JSON encoded query or an array by which to search
    * @param  array  $fields Fields of the results to return
+   * @throws Exception
    * @return mixed  Record matching query or NULL
    */
   public function findOne($query = array(), $fields = array())
@@ -918,6 +929,7 @@ class Mongo_Collection implements Iterator, Countable {
    * Count results of a separate query: pass an array or JSON string of query parameters
    *
    * @param  mixed $query
+   * @throws Exception
    * @return int
    */
   public function count($query = TRUE)

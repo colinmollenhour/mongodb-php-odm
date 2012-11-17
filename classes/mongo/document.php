@@ -401,6 +401,11 @@ abstract class Mongo_Document implements ArrayAccess {
     }
   }
 
+  /** Return TRUE if document is being created */
+  public function is_new() {
+    return !isset($this->_object['_id']) || isset($this->_changed['_id']);
+  }
+  
   /**
    * Return the Mongo_Database reference (proxy to the collection's db() method)
    *

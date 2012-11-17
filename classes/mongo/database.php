@@ -25,23 +25,25 @@
  *
  * If using Kohana, profiling can be enabled/disabled via the configuration or on demand by setting the profiling property.
  *
- * @method array authenticate()  authenticate( string $username , string $password )
- * @method array command()  command( array $data )
- * @method MongoCollection createCollection()  createCollection( string $name, boolean $capped = FALSE, int $size = 0, int $max = 0 )
- * @method array createDBRef()  createDBRef( mixed $ns , mixed $a )
- * @method array drop()  drop()
- * @method array dropCollection()  dropCollection( mixed $coll )
- * @method boolean forceError()  forceError()
- * @method array getDBRef()  getDBRef( array $ref )
- * @//method MongoGridFS getGridFS()  getGridFS( string $arg1 = "fs", string $arg2 = NULL )
- * @method int getProfilingLevel()  getProfilingLevel()
- * @method array lastError()  lastError()
- * @method array listCollections()  listCollections()
- * @method array prevError()  prevError()
- * @method array repair()  repair( boolean $preserve_cloned_files = FALSE, boolean $backup_original_files = FALSE )
- * @method array resetError()  resetError()
- * @//method Mongo_Collection selectCollection( string $name )
- * @method int setProfilingLevel()  setProfilingLevel( int $level )
+ * @method array authenticate( string $username , string $password )
+ * @method array command( array $data )
+ * @method MongoCollection createCollection( string $name, bool $capped = FALSE, int $size = 0, int $max = 0 )
+ * @method array createDBRef( mixed $ns , mixed $a )
+ * @method array drop()
+ * @method array dropCollection( mixed $coll )
+ * @method bool forceError()
+ * @method array getDBRef( array $ref )
+ * @method int getProfilingLevel()
+ * @method array getReadPreference()
+ * @method bool getSlaveOkay()
+ * @method array lastError()
+ * @method array listCollections()
+ * @method array prevError()
+ * @method array repair( bool $preserve_cloned_files = FALSE, bool $backup_original_files = FALSE )
+ * @method array resetError()
+ * @method int setProfilingLevel( int $level )
+ * @method bool setReadPreference(int $read_preference, array $tags = array())
+ * @method bool setSlaveOkay(bool $ok = true)
  *
  * @author  Colin Mollenhour
  * @package Mongo_Database
@@ -74,9 +76,14 @@ class Mongo_Database {
   /** Mongo_Database instances
    *  @static  array */
   protected static $instances = array();
-
+  
   public static $configs = array();
   
+  /**
+   * @var   string     default db to use
+   */
+  public static $default = 'default';
+
   /**
    * Get a Mongo_Database instance. Configuration options are:
    *
@@ -92,8 +99,12 @@ class Mongo_Database {
    * @return  Mongo_Database
    * @static
    */
-  public static function instance($name = 'default', array $config = NULL)
+  public static function instance($name = NULL, array $config = NULL)
   {
+    if ($name === NULL)
+    {
+      $name = self::$default;
+    }
     if( ! isset(self::$instances[$name]) )
     {
       if ($config === NULL)
@@ -262,6 +273,7 @@ class Mongo_Database {
    *
    * @param  string  $name
    * @param  array  $arguments
+   * @throws Exception
    * @return mixed
    */
   public function __call($name, $arguments)
@@ -427,6 +439,7 @@ class Mongo_Database {
    *
    * @param string $group
    * @param string $query
+   * @return mixed
    */
   public function profiler_start($group, $query)
   {

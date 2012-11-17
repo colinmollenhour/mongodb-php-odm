@@ -31,11 +31,33 @@
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
  * </code>
  *
+ * @method array aggregate(array $pipelines)
+ * @method mixed batchInsert(array $a, array $options = array())
+ * @method array createDBRef(array $a)
+ * @method array deleteIndex(mixed $keys)
+ * @method array deleteIndexes()
+ * @method array distinct(string $key, array $query = array())
+ * @method array drop()
+ * @method bool ensureIndex(mixed $keys, array $options = array())
+ * @method array getDBRef(array $ref)
+ * @method array getIndexInfo()
+ * @method string getName()
+ * @method array getReadPreference()
+ * @method bool getSlaveOkay()
+ * @method array group(mixed $keys, array $initial, MongoCode $reduce, array $options = array())
+ * @method bool|array insert(array $data, array $options = array())
+ * @method bool|array remove(array $criteria = array(), array $options = array())
+ * @method mixed save(array $a, array $options = array())
+ * @method bool setReadPreference(int $read_preference, array $tags = array())
+ * @method bool setSlaveOkay(bool $ok = true)
+ * @method bool|array update(array $criteria, array $new_object, array $options = array())
+ * @method array validate(bool $scan_data = false)
+ *
  * @author  Colin Mollenhour
  * @package Mongo_Database
  */
-
-class Mongo_Collection implements Iterator, Countable {
+class Mongo_Collection implements Iterator, Countable
+{
 
   const ASC = 1;
   const DESC = -1;
@@ -58,7 +80,7 @@ class Mongo_Collection implements Iterator, Countable {
 
   /** The database configuration name (passed to Mongo_Database::instance() )
    *  @var  string  */
-  protected $db = 'default';
+  protected $db;
 
   /** Whether or not this collection is a gridFS collection
    *  @var  bool */
@@ -100,10 +122,14 @@ class Mongo_Collection implements Iterator, Countable {
    * @param  bool    $gridFS  Is the collection a gridFS instance?
    * @param  bool|string $model   Class name of template model for new documents
    */
-  public function __construct($name = NULL, $db = 'default', $gridFS = FALSE, $model = FALSE)
+  public function __construct($name = NULL, $db = NULL, $gridFS = FALSE, $model = FALSE)
   {
     if($name !== NULL)
     {
+      if ($db === NULL)
+      {
+        $db = Mongo_Database::$default;
+      }
       $this->db = $db;
       $this->name = $name;
       $this->gridFS = $gridFS;
@@ -211,6 +237,8 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   mixed $query  An array of paramters or a key
    * @param   mixed $value  If $query is a key, this is the value
+   * @throws  MongoCursorException
+   * @throws  Exception
    * @return  Mongo_Collection
    */
   public function find($query = array(), $value = NULL)
@@ -274,6 +302,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   array $fields
    * @param   int|bool $include
+   * @throws  MongoCursorException
    * @return  Mongo_Collection
    */
   public function fields($fields = array(), $include = 1)
@@ -365,6 +394,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param   array|string $fields  A sort criteria or a key (requires corresponding $value)
    * @param   string|int   $direction The direction if $fields is a key
+   * @throws  MongoCursorException
    * @return  Mongo_Collection
    */
   public function sort($fields, $direction = self::ASC)
@@ -468,6 +498,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  string  $name
    * @param  mixed  $value
+   * @throws MongoCursorException
    * @return Mongo_Collection
    */
   public function set_option($name, $value)
@@ -502,6 +533,7 @@ class Mongo_Collection implements Iterator, Countable {
    * Unset a cursor option to be set before executing the query.
    *
    * @param  string  $name
+   * @throws MongoCursorException
    * @return Mongo_Collection
    */
   public function unset_option($name)
@@ -523,10 +555,11 @@ class Mongo_Collection implements Iterator, Countable {
   {
     return !!$this->_cursor;
   }
-  
+
   /**
    * Is the query iterating yet?
-   * 
+   *
+   * @throws Exception
    * @return bool
    */
   public function is_iterating()
@@ -545,6 +578,8 @@ class Mongo_Collection implements Iterator, Countable {
    * Instantiates a cursor, after this is called the query cannot be modified.
    * This is automatically called when the iterator initializes (rewind).
    *
+   * @throws  MongoCursorException
+   * @throws  MongoException
    * @return  Mongo_Collection
    */
   public function load()
@@ -576,6 +611,7 @@ class Mongo_Collection implements Iterator, Countable {
    *
    * @param  mixed  $query  An _id, a JSON encoded query or an array by which to search
    * @param  array  $fields Fields of the results to return
+   * @throws Exception
    * @return mixed  Record matching query or NULL
    */
   public function findOne($query = array(), $fields = array())
@@ -893,6 +929,7 @@ class Mongo_Collection implements Iterator, Countable {
    * Count results of a separate query: pass an array or JSON string of query parameters
    *
    * @param  mixed $query
+   * @throws Exception
    * @return int
    */
   public function count($query = TRUE)
@@ -1058,7 +1095,11 @@ class Mongo_Collection implements Iterator, Countable {
   public function inspect()
   {
     $query = array();
-    if($this->_query) $query[] = JSON::str($this->_query);
+    if($this->_query) {
+      $query[] = JSON::str($this->_query);
+    } else {
+      $query[] = '{}';
+    }
     if($this->_fields) $query[] = JSON::str($this->_fields);
     $query = "db.$this->name.find(".implode(',',$query).")";
     foreach($this->_options as $key => $value)

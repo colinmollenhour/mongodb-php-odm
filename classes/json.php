@@ -46,14 +46,16 @@ class JSON {
   }
 
   /**
-   * Encode an array or object into a JSON string
+   * Encode an array or object into a Mongo-like JSON string
    *
-   * @param  array|object $value
+   * @param  mixed $value
    * @return  string
    */
   public static function str($value)
   {
-    return json_encode($value);
+    $json = json_encode($value);
+    $json = preg_replace('/{"\$id":"(\w+)"}/','ObjectId("$1")', $json);
+    return $json;
   }
 
 }

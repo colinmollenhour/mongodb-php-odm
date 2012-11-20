@@ -663,6 +663,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The data to be saved
+   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
    * @return  Mongo_Document
    */
   public function set($name, $value, $setDirty = false)
@@ -689,6 +690,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
    * @return Mongo_Document
    */
   public function _unset($name, $setDirty = false)
@@ -729,6 +731,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The value to push
+   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
    * @return  Mongo_Document
    */
   public function push($name, $value, $setDirty = true)

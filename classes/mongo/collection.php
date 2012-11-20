@@ -1215,4 +1215,19 @@ class Mongo_Collection implements Iterator, Countable
       if (empty($options['sort'])) unset($options['sort']);
       return $this->db()->command_safe($options);
   }
+  
+  public function distinct($key, $query = array()) {
+      return $this->db()->command_safe(array(
+          'distinct' => $this->name,
+          'key' => $key,
+          'query' => $query
+      ));
+  }
+
+  public function aggregate($pipeline) {
+      return $this->db()->command_safe(array(
+          'aggregate' => $this->name,
+          'pipeline' => $pipeline,
+      ));
+  }  
 }

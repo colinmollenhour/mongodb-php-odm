@@ -568,21 +568,32 @@ abstract class Mongo_Document implements ArrayAccess {
       return $this->_related_objects[$name];
     }
 
+    $this->load_if_needed($name);
+
+    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+  }
+
+  /**
+   * Reload document only if there is need for it
+   * @param $name Name of the field to check for (no dot notation)
+   */
+  protected function load_if_needed($name) {
     // Reload when retrieving dirty data
     if($this->_loaded && empty($this->_operations) && ! empty($this->_dirty[$name]))
     {
       $this->load();
+      return true;
     }
 
     // Lazy loading!
     else if($this->_loaded === NULL && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
     {
       $this->load();
-    }
-
-    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+      return true;
+    }      
+    return false;
   }
-
+  
   /**
    * Magic method for setting the value of a field. In order to set the value of a nested field,
    * you must use the "set" method, not the magic method. Examples:
@@ -649,6 +660,18 @@ abstract class Mongo_Document implements ArrayAccess {
 
   /** Get the value for a key (using dot notation)  */
   public function get($name, $default = null) {
+      $name = $this->get_field_name($name);
+      $dotPos = strpos($name, '.');
+      if (!$dotPos && $default === null) {
+          return $this->__get($name);
+      }
+      $this->load_if_needed($dotPos ? substr($name, 0, $dotPos) : $name);
+      $ref = $this->get_field_ref($this->_object, $name, false, $default);
+      return $ref;
+  }
+
+  /** Get the raw value for a key (using dot notation), without lazy loading, aliasing and references  */
+  public function getRaw($name, $default = null) {
 //    if( ! strpos($name, '.')) {
 //        if ($default !== null && !isset($this[$name])) return $default;
 //        return $this->__get($name);
@@ -1297,11 +1320,11 @@ abstract class Mongo_Document implements ArrayAccess {
   }
 
   public function offsetGet( $offset ) {
-    return $this->{$offset};
+    return $this->get($offset);
   }
 
   public function offsetSet( $offset, $value ) {
-    $this->{$offset} = $value;
+    $this->set($offset, $value);
   }
 
   public function offsetUnset( $offset ) {

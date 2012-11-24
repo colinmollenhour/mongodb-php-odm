@@ -408,6 +408,11 @@ abstract class Mongo_Document implements ArrayAccess {
     return !isset($this->_object['_id']) || isset($this->_changed['_id']);
   }
   
+  /** Returns TRUE if document actually exists in the database */
+  public function exists() {
+      return $this->_loaded || ($this->_loaded === NULL && $this->load_if_needed(false));
+  }
+  
   /**
    * Return the Mongo_Database reference (proxy to the collection's db() method)
    *
@@ -581,15 +586,13 @@ abstract class Mongo_Document implements ArrayAccess {
     // Reload when retrieving dirty data
     if($this->_loaded && empty($this->_operations) && ! empty($this->_dirty[$name]))
     {
-      $this->load();
-      return true;
+      return $this->load();
     }
 
     // Lazy loading!
     else if($this->_loaded === NULL && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
     {
-      $this->load();
-      return true;
+      return $this->load();
     }      
     return false;
   }

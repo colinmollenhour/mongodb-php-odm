@@ -909,7 +909,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   mixed   $value  The value to add to the set
    * @return  Mongo_Document
    */
-  public function addToSet($name, $value)
+  public function addToSet($name, $value, $setDirty = true)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$addToSet'][$name]))
@@ -934,7 +934,20 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$addToSet'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true);
+        if ($ref === null) {
+            $ref = array($value);
+        } else {
+            if (!is_array($ref)) throw new Exception("Value '$name' cannot be set as an array"); // $ref = array($ref);
+            if (!in_array($value, $ref, true)) {
+                array_push($ref, $value);
+            }
+        }
+        return $this;
+    }    
   }
 
   /**

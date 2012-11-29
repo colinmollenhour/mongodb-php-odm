@@ -1339,7 +1339,7 @@ abstract class Mongo_Document implements ArrayAccess {
 
    
   public function offsetExists( $offset ) {
-    return isset($this->{$offset});
+      return $this->__isset($offset);
   }
 
   public function offsetGet( $offset ) {

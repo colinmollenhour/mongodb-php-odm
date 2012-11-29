@@ -1230,4 +1230,26 @@ class Mongo_Collection implements Iterator, Countable
           'pipeline' => $pipeline,
       ));
   }  
+
+  /***/
+  public function isCapped() {
+      $stats = $this->stats();
+      return !empty($stats['capped']);
+  }  
+
+  /** The emptycapped command removes all documents from a capped collection. */
+  public function emptyCapped() {
+      return $this->db()->command_safe(array(
+          'emptycapped' => $this->name,
+      ));
+  }  
+
+  /** The collStats command returns a variety of storage statistics for a given collection. */
+  public function stats($scale = 1024) {
+      return $this->db()->command_safe(array(
+          'collStats' => $this->name,
+          'scale' => $scale
+      ));
+  }  
+
 }

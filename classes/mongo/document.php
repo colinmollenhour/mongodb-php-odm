@@ -707,7 +707,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The data to be saved
-   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
   public function set($name, $value, $setDirty = false)
@@ -734,7 +734,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
-   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return Mongo_Document
    */
   public function _unset($name, $setDirty = false)
@@ -754,9 +754,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The amount to increment by (default is 1)
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function inc($name, $value = 1)
+  public function inc($name, $value = 1, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$inc'][$name]))
@@ -767,7 +768,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$inc'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true, 0);
+        $ref += $value;
+        return $this;
+    }
   }
 
   /**
@@ -775,10 +782,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The value to push
-   * @param   boolean $setDirty TRUE to reload the document, FALSE for eventual consistency  
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function push($name, $value, $setDirty = true)
+  public function push($name, $value, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -799,13 +806,9 @@ abstract class Mongo_Document implements ArrayAccess {
     if ($setDirty) {
         return $this->_set_dirty($name);
     } else {
-        $ref =& $this->get_field_ref($this->_object, $name, true);
-        if ($ref === null) {
-            $ref = array($value);
-        } else {
-            if (!is_array($ref)) throw new Exception("Value '$name' cannot be set as an array"); // $ref = array($ref);
-            array_push($ref, $value);
-        }
+        $ref =& $this->get_field_ref($this->_object, $name, true, array());
+        if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+        array_push($ref, $value);
         return $this;
     }
   }
@@ -815,9 +818,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of values to push
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function pushAll($name, $value)
+  public function pushAll($name, $value, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -828,33 +832,50 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pushAll'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true, array());
+        if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+        foreach($value as $v) array_push($ref, $v);
+        return $this;
+    }
   }
 
   /**
    * Pop a value from the end of an array
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $last Pass TRUE to pop last element
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function pop($name)
+  public function pop($name, $last = true, $setDirty = false)
   {
     $name = $this->get_field_name($name);
-    $this->_operations['$pop'][$name] = 1;
-    return $this->_set_dirty($name);
+    $this->_operations['$pop'][$name] = $last ? 1 : -1;
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true, null);
+        if ($ref === null) return $this;
+        if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+        if ($last) array_pop($ref);
+        else array_shift($ref);
+        return $this;
+    }
   }
 
   /**
    * Pop a value from the beginning of an array
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function shift($name)
+  public function shift($name, $setDirty = false)
   {
-    $name = $this->get_field_name($name);
-    $this->_operations['$pop'][$name] = -1;
-    return $this->_set_dirty($name);
+    return $this->pop($name, false, $setDirty);
   }
 
   /**
@@ -862,9 +883,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function pull($name, $value)
+  public function pull($name, $value, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -882,7 +904,15 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pull'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true, null);
+        if ($ref === null) return $this;
+        if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
+        $ref = array_filter($ref, function($v) {return $v === $value;});
+        return $this;
+    }
   }
 
   /**
@@ -890,9 +920,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of value to pull from the array
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function pullAll($name, $value)
+  public function pullAll($name, $value, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -903,7 +934,15 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pullAll'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($setDirty) {
+        return $this->_set_dirty($name);
+    } else {
+        $ref =& $this->get_field_ref($this->_object, $name, true, null);
+        if ($ref === null) return $this;
+        if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
+        $ref = array_filter($ref, function($v) {return in_array($v, $value, true);});
+        return $this;
+    }
   }
 
   /**
@@ -911,6 +950,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value
+   * @todo some setDirty emulation love
    * @return  Mongo_Document
    */
   public function bit($name,$value)
@@ -925,9 +965,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value  The value to add to the set
+   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
    * @return  Mongo_Document
    */
-  public function addToSet($name, $value, $setDirty = true)
+  public function addToSet($name, $value, $setDirty = false)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$addToSet'][$name]))
@@ -1372,13 +1413,19 @@ abstract class Mongo_Document implements ArrayAccess {
     unset($this->{$offset});
   }
 
+  /** Returns direct reference to a field, using dot notation.
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   * @param $create TRUE to create a field if it's missing
+   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   *  */
   protected function &get_field_ref(&$arr, $name, $create = false, $default = null) {
     $keys = explode('.', $name);
     $data =& $arr;
-    foreach($keys as $key) {
+    foreach($keys as $i => $key) {
         if (!isset($data[$key])) {
             if ($create) {
-                $data[$key] = $default;
+                $data[$key] = $i == count($keys) - 1 ? $default : array();
             } else {
                 $nil = $default;
                 return $nil;
@@ -1389,6 +1436,10 @@ abstract class Mongo_Document implements ArrayAccess {
     return $data;
   }  
   
+  /** Unsets a field using dot notation
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   *  */
   protected function unset_field_ref(&$arr, $name) {
     $keys = explode('.', $name);
     $data =& $arr;

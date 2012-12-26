@@ -1457,8 +1457,19 @@ abstract class Mongo_Document implements ArrayAccess {
     }      
   }  
   
-  /** This will check the existence of new object,
-   * save current object, reload it (to keep in sync with db), store a new copy, and finally remove the old one... 
+  /** Change ID of the current document. 
+   * 
+   * The workflow:
+   * - checks the existence of new object,
+   * - saves current object, 
+   * - reloads it (to keep in sync with db), 
+   * - removes the old one (we have to do it now, to not to fall under unique constraints),
+   * - stores a new copy.
+   * 
+   * @warning If reinsertion results in the error, you will loose data
+   * 
+   * @todo Specific exception for reinsertion, or another way to handle this scenario.
+   * 
    * @param $newId - new id to use
    * @param $reload - TRUE to load the document after saving
    * @param $overwrite - TRUE to overwrite existing document, FALSE to throw an exception if it exists
@@ -1466,10 +1477,10 @@ abstract class Mongo_Document implements ArrayAccess {
   public function change_id($newId, $reload = true, $overwrite = false) {
       $oldId = $this->id;
       if ($overwrite) $this->collection()->remove(array('_id' => $newId));
-      else if ($this->collection()->findOne($newId)) throw new Exception("Document '$newId' already exists!");
+      else if ($this->collection()->findOne($newId)) throw new MongoException("Document '$newId' already exists!");
       if ($this->_changed || $this->_operations) $this->save();
       if ($reload) {
-          if (!$this->load()) throw new Exception('Document failed to reload!');
+          if (!$this->load()) throw new MongoException('Document failed to reload!');
       }
       $this->id = $newId;
       foreach($this->_object as $name => $v) {

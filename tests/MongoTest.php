@@ -198,7 +198,6 @@ class MongoTest extends PHPUnit_Framework_TestCase {
                 } else {
                     $this->assertEquals($data, $doc->as_array(), "Should be untouched (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");
                 }
-                var_dump($doc);
                 $doc->save();
                 $doc->load();
                 $this->assertEquals($expected, $doc->as_array(), "After save & load (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");

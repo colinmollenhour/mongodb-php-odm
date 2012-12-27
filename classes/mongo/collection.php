@@ -970,6 +970,8 @@ class Mongo_Collection implements Iterator, Countable
       }
 
       $count = $this->collection()->count($query);
+      
+      
     }
 
     // End profiling count
@@ -977,6 +979,8 @@ class Mongo_Collection implements Iterator, Countable
     {
       $this->db()->profiler_stop($bm);
     }
+    
+    if (is_array($count)) throw new MongoException(json_encode($count));
 
     return $count;
   }
@@ -1162,8 +1166,18 @@ class Mongo_Collection implements Iterator, Countable
 
   
   /** Wrapper for geoNear command
+   * @param $near Position [lon, lat]
+   * @param $query Additional query
+   * @param $maxDistance Maximum distance
+   * @param $num Limit
    * @param $options Additional options like distanceMultiplier, spherical
    * @param $result Reference to variable, where original result object will be stored
+   * 
+   * To find places $distanceKm kilometer around $pos use:
+   * 
+   * $collection->geoNear($pos, $query, $distanceKm / 6378.137, 10, 
+                    ['distanceMultiplier' => 6378.137, 'spherical' => true]);
+   * 
    * @return Array of Mongo_Document objects with distance set as $distanceKey (_distance by default)
    */
   public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance') {

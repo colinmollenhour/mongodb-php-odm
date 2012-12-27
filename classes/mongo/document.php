@@ -232,6 +232,29 @@ abstract class Mongo_Document implements ArrayAccess {
    *  @var  array */
   protected $_aliases = array();
 
+  /** If set to TRUE, operator functions (set, inc, push etc.) will emulate database functions for eventual consistency. 
+   * For example this will print '2':
+   * <code>
+   * $doc = new Mongo_Document();
+   * $doc->_emulate = true;
+   * $doc->number = 1;
+   * $doc->inc('number');
+   * echo $doc->number;
+   * </code>
+   * 
+   * If set to FALSE, the field will be marked as dirty, and the new value will only be available after reload.
+   * This will print '1':
+   * <code>
+   * $doc = new Mongo_Document();
+   * $doc->_emulate = false;
+   * $doc->number = 1;
+   * $doc->inc('number');
+   * echo $doc->number;
+   * </code>
+   * 
+   *  */
+  protected $_emulate = false;
+  
   /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
    *  @var  array */
   public $__data = array();
@@ -419,6 +442,11 @@ abstract class Mongo_Document implements ArrayAccess {
   /** Returns TRUE if document actually exists in the database */
   public function exists() {
       return $this->_loaded || ($this->_loaded === NULL && $this->load_if_needed(false));
+  }
+
+  /** Changes emulation mode. See $this->_emulate */
+  public function set_emulation($emulate) {
+      $this->_emulate = $emulate;
   }
   
   /**
@@ -707,10 +735,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The data to be saved
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function set($name, $value, $setDirty = false)
+  public function set($name, $value, $emulate = null)
   {
     if( ! strpos($name, '.')) {
       $this->__set($name, $value);
@@ -718,7 +746,7 @@ abstract class Mongo_Document implements ArrayAccess {
     }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true);
@@ -734,14 +762,14 @@ abstract class Mongo_Document implements ArrayAccess {
    *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return Mongo_Document
    */
-  public function _unset($name, $setDirty = false)
+  public function _unset($name, $emulate = null)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$unset'][$name] = 1;
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $this->unset_field_ref($this->_object, $name);
@@ -754,10 +782,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The amount to increment by (default is 1)
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function inc($name, $value = 1, $setDirty = false)
+  public function inc($name, $value = 1, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$inc'][$name]))
@@ -768,7 +796,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$inc'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, 0);
@@ -782,10 +810,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The value to push
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function push($name, $value, $setDirty = false)
+  public function push($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -803,7 +831,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$push'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, array());
@@ -818,10 +846,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of values to push
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pushAll($name, $value, $setDirty = false)
+  public function pushAll($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -832,7 +860,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pushAll'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, array());
@@ -847,14 +875,14 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   boolean $last Pass TRUE to pop last element
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pop($name, $last = true, $setDirty = false)
+  public function pop($name, $last = true, $emulate = null)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$pop'][$name] = $last ? 1 : -1;
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, null);
@@ -870,12 +898,12 @@ abstract class Mongo_Document implements ArrayAccess {
    * Pop a value from the beginning of an array
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function shift($name, $setDirty = false)
+  public function shift($name, $emulate = null)
   {
-    return $this->pop($name, false, $setDirty);
+    return $this->pop($name, false, $emulate);
   }
 
   /**
@@ -883,10 +911,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pull($name, $value, $setDirty = false)
+  public function pull($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -904,13 +932,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pull'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, null);
         if ($ref === null) return $this;
         if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
-        $ref = array_filter($ref, function($v) {return $v === $value;});
+        $ref = array_filter($ref, function($v) use ($value) {return $v !== $value;});
         return $this;
     }
   }
@@ -920,10 +948,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of value to pull from the array
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pullAll($name, $value, $setDirty = false)
+  public function pullAll($name, array $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -934,13 +962,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pullAll'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true, null);
         if ($ref === null) return $this;
         if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
-        $ref = array_filter($ref, function($v) {return in_array($v, $value, true);});
+        $ref = array_filter($ref, function($v) use ($value) {return !in_array($v, $value, true);});
         return $this;
     }
   }
@@ -950,7 +978,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value
-   * @todo some setDirty emulation love
+   * @todo some emulation love
    * @return  Mongo_Document
    */
   public function bit($name,$value)
@@ -965,10 +993,10 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value  The value to add to the set
-   * @param   boolean $setDirty FALSE will emulate the database function for eventual consistency, TRUE will reload a WHOLE document on the next get($name)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function addToSet($name, $value, $setDirty = false)
+  public function addToSet($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$addToSet'][$name]))
@@ -993,7 +1021,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$addToSet'][$name] = $value;
     }
-    if ($setDirty) {
+    if ($emulate === false || ($emulate === null && $this->_emulate === false)) {
         return $this->_set_dirty($name);
     } else {
         $ref =& $this->get_field_ref($this->_object, $name, true);
@@ -1406,11 +1434,11 @@ abstract class Mongo_Document implements ArrayAccess {
   }
 
   public function offsetSet( $offset, $value ) {
-    $this->set($offset, $value);
+    $this->set($offset, $value, true);
   }
 
   public function offsetUnset( $offset ) {
-    unset($this->{$offset});
+      $this->_unset($offset, true);
   }
 
   /** Returns direct reference to a field, using dot notation.

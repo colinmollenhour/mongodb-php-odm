@@ -492,6 +492,10 @@ class Mongo_Collection implements Iterator, Countable
     return isset($this->_options[$name]) ? $this->_options[$name] : NULL;
   }
 
+  public function get_query() {
+      return $this->_query;
+  }
+  
   /**
    * Set a cursor option. Will apply to currently loaded cursor if it has not started iterating.
    * Also supports setting 'query' and 'fields'.

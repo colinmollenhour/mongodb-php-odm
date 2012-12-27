@@ -58,12 +58,13 @@ class Mongo_Subdocument implements ArrayAccess {
 
     /**
      * @param $document Document containing this subdocument
-     * @param $name Name of this subdocument (in dot notation)
+     * @param $name Name of this subdocument (in dot notation). If it does not exist, it will be created. 
+     *              But it won't be saved until you change anything in it.
      */
-    function __construct( Mongo_Document $document, $name ) {
+    function __construct( Mongo_Document $document, $name, $default = array() ) {
         $this->_doc = $document;
         $this->_name = $name;
-        $this->_reference = & $document->get_field_reference($name, true, array());
+        $this->_reference = & $document->get_field_reference($name, $default !== null, $default);
     }
 
 
@@ -83,6 +84,10 @@ class Mongo_Subdocument implements ArrayAccess {
         return $result;
     }
 
+    /** @return Mongo_Document */
+    public function document() {
+        return $this->_doc;
+    }
 
     public function __call( $name, $arguments ) {
         // Workaround Reserved Keyword 'unset'

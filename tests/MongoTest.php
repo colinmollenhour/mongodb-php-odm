@@ -1,5 +1,9 @@
 <?php
 
+require_once __DIR__ . '/../classes/mongo/database.php';
+require_once __DIR__ . '/../classes/mongo/collection.php';
+require_once __DIR__ . '/../classes/mongo/document.php';
+
 /* Row Data Gateway Pattern */
 
 class Model_Document_Collection extends Mongo_Collection {

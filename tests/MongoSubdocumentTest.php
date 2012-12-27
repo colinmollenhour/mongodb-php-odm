@@ -6,7 +6,7 @@ require_once __DIR__ . '/../classes/mongo/document.php';
 
 /* Row Data Gateway Pattern */
 
-class Model_Test_Document_Collection extends Mongo_Collection {
+class Model_Document_Collection extends Mongo_Collection {
 
     protected $name = 'mongotest';
     protected $db = 'mongotest';
@@ -14,11 +14,11 @@ class Model_Test_Document_Collection extends Mongo_Collection {
 }
 
 
-class Model_Test_Document extends Mongo_Document {
+class Model_Document extends Mongo_Document {
 
     protected $_references = array(
-        'other' => array('model' => 'test_other'),
-        'lots' => array('model' => 'test_other', 'field' => '_lots', 'multiple' => TRUE)
+        'other' => array('model' => 'other'),
+        'lots' => array('model' => 'other', 'field' => '_lots', 'multiple' => TRUE)
     );
 
 }
@@ -26,12 +26,12 @@ class Model_Test_Document extends Mongo_Document {
 
 /* Table Data Gateway Pattern */
 
-class Model_Test_Other extends Mongo_Document {
+class Model_Other extends Mongo_Document {
 
     protected $name = 'mongotest';
     protected $db = 'mongotest';
     protected $_searches = array(
-        'docs' => array('model' => 'test_document', 'field' => '_other'),
+        'docs' => array('model' => 'document', 'field' => '_other'),
     );
 
 }
@@ -61,7 +61,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
 
 
     public function testCollection() {
-        $col = Mongo_Document::factory('test_document')->collection();
+        $col = Mongo_Document::factory('document')->collection();
 
         $batch = array();
         for ($i = 0; $i < 20; $i++) {
@@ -85,14 +85,14 @@ class MongoTest extends PHPUnit_Framework_TestCase {
 
 
     public function testReference() {
-        $doc = new Model_Test_Document();
+        $doc = new Model_Document();
         $doc->id = 'foo';
-        $doc->other = Mongo_Document::factory('test_other');
+        $doc->other = Mongo_Document::factory('other');
         $doc->other->bar = 'baz';
         $doc->other->save();
         $doc->save();
         $this->assertNotNull($doc->_other, 'referenced document reference doesnt exist');
-        $doc = new Model_Test_Document('foo');
+        $doc = new Model_Document('foo');
         $this->assertEquals('baz', $doc->other->bar, 'nested document not saved');
 
         $docs = $doc->other->find_docs();
@@ -101,7 +101,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('foo', $doc0->id, 'doc id is expected');
 
         for ($i = 0; $i < 3; $i++) {
-            $newdoc = Mongo_Document::factory('test_other')->load_values(array('id' => 'more' . $i, 'foo' => 'bar' . $i))->save();
+            $newdoc = Mongo_Document::factory('other')->load_values(array('id' => 'more' . $i, 'foo' => 'bar' . $i))->save();
             $doc->push('_lots', $newdoc->id);
         }
         $doc->save();
@@ -124,7 +124,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
             ),
         );
 //        $this->out('BEFORE', $data);
-        $doc = new Model_Test_Document();
+        $doc = new Model_Document();
         $doc->load_values($data);
         $doc->save();
         $this->assertTrue($doc->loaded(), 'document loaded after save');
@@ -132,7 +132,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
         $this->assertNotNull($doc->id, '_id exists');
 
         $id = $doc->id;
-        $doc = new Model_Test_Document($id);
+        $doc = new Model_Document($id);
         $doc->load();
         $this->assertTrue($doc->loaded());
         $this->assertEquals('mongo', $doc->name);
@@ -145,7 +145,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
         $doc->inc('counter')->save()->load();
         $this->assertEquals($old + 1, $doc->counter, 'counter not incremented');
 
-        $doc = new Model_Test_Document();
+        $doc = new Model_Document();
         $doc->name = 'Bugs Bunny';
         $doc->push('friends', 'Daffy Duck');
         $doc->upsert();
@@ -153,7 +153,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
         $doc->load();
         $this->assertNotEmpty($doc->id, 'document not inserted on upsert');
 
-        $doc = new Model_Test_Document();
+        $doc = new Model_Document();
         $doc->name = 'Bugs Bunny';
         $doc->push('friends', 'Elmer Fudd');
         $doc->upsert();
@@ -166,10 +166,10 @@ class MongoTest extends PHPUnit_Framework_TestCase {
 
 //        $this->test('INSERT Document WITH _id');
         $data = array('name' => 'mongo', 'counter' => 10, 'set' => array('foo', 'bar', 'baz'));
-        $doc = new Model_Test_Document();
+        $doc = new Model_Document();
         $doc->id = 'test_doc';
         $doc->load_values($data)->save();
-        $doc = new Model_Test_Document('test_doc');
+        $doc = new Model_Document('test_doc');
         $doc->load();
         $this->assertTrue($doc->loaded(), 'document not found');
     }
@@ -181,7 +181,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
                 $emulation = $functionEmulation === null ? $modelEmulation : $functionEmulation;
                 
                 unset($data['_id']);
-                $doc = new Model_Test_Document();
+                $doc = new Model_Document();
                 $doc->set_emulation($modelEmulation);
                 $doc->load_values($data);
                 $doc->save();

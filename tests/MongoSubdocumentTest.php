@@ -47,6 +47,26 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
             , $doc->as_array());
     }
     
+    public function testCreateArray() {
+        $doc = new Model_Test_Document();
+        $doc->some = 'thing';
+        $doc->sub = array();
+        $sub = new Mongo_Subdocument($doc, 'sub.0');
+        $sub->foo = 'bar';
+        $sub = new Mongo_Subdocument($doc, 'sub.1');
+        $sub->foo = 'baz';
+        $doc->save();
+        
+        $this->assertEquals(array(
+                'some' => 'thing', 
+                'sub' => array(array('foo' => 'bar'), array('foo' => 'baz')), 
+                '_id' => $doc->id)
+            , $doc->as_array());
+        
+        $this->assertEquals( 1, $doc->collection(true)->find(array('sub.0.foo' => 'bar'))->count(), 'Not created properly' );
+        $this->assertEquals( 1, $doc->collection(true)->find(array('sub.foo' => 'bar'))->count(), 'Object, not an array!' );
+    }
+    
     public function testIterate() {
         $doc = new Model_Test_Document();
         $doc->array = [0,1,2,3,4,5];

@@ -14,7 +14,8 @@ This fork adds quite a lot of functionality, to already very usable class:
 * Static configuration and model declaration, handy if you don't use it in Kohana
 * Ability to override connection instance for testing purposes
 * Helper functions for some commands like *geoNear*, *mapReduce*, *distinct*, capped collections...
-* Mongo_Document implements ArrayAccess, allowing to get/set values using dot notation
+* Mongo_Document implements ArrayAccess, allowing to get/set values using dot notation. Additional get() and getRaw() functions.
+* $_references allow to use getter and setter functions for properties
 * trying to load a non-existent document will keep it's ID. You can reuse this object to create a new one
 * change_id() for easy changing of document id's
 

@@ -552,19 +552,29 @@ abstract class Mongo_Document {
       return $this->_related_objects[$name];
     }
 
+    $this->load_if_needed($name);
+
+    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+  }
+
+  /**
+   * Reload document only if there is need for it
+   * @param $name Name of the field to check for (no dot notation)
+   */
+  protected function load_if_needed($name)
+  {
     // Reload when retrieving dirty data
-    if($this->_loaded && empty($this->_operations) && ! empty($this->_dirty[$name]))
+    if ($this->_loaded && empty($this->_operations) && !empty($this->_dirty[$name]))
     {
-      $this->load();
+      return $this->load();
     }
 
     // Lazy loading!
-    else if($this->_loaded === NULL && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
+    else if ($this->_loaded === NULL && isset($this->_object['_id']) && !isset($this->_changed['_id']) && $name != '_id')
     {
-      $this->load();
+      return $this->load();
     }
-
-    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+    return false;
   }
 
   /**

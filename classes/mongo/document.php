@@ -347,6 +347,9 @@ abstract class Mongo_Document {
   public function __isset($name)
   {
     $name = $this->get_field_name($name, FALSE);
+    if (isset($this->_object[$name])) return true;
+    // check for dirties...
+    if ($this->get($name)) return true;
     return isset($this->_object[$name]);
   }
 
@@ -643,6 +646,27 @@ abstract class Mongo_Document {
     }
     $this->_dirty[$name] = TRUE;
     return $this;
+  }
+
+  /** Get the value for a key (using dot notation)  */
+  public function get($name, $default = null)
+  {
+    $name = $this->get_field_name($name);
+    $dotPos = strpos($name, '.');
+    if (!$dotPos && $default === null)
+    {
+      return $this->__get($name);
+    }
+    $this->load_if_needed($dotPos ? substr($name, 0, $dotPos) : $name);
+    $ref = $this->get_field_reference($name, false, $default);
+    return $ref;
+  }
+
+  /** Get the raw value for a key (using dot notation), without lazy loading, aliasing and references  */
+  public function get_raw($name, $default = null)
+  {
+    $ref = $this->get_field_reference($name, false, $default);
+    return $ref;
   }
 
   /**

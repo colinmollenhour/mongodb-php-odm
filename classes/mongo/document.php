@@ -1253,5 +1253,71 @@ abstract class Mongo_Document {
     return $merged;
   }
 
+  /** Returns direct reference to a field, using dot notation.
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   * @param $create TRUE to create a field if it's missing
+   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   *  */
+  public function &get_field_reference($name, $create = false, $default = null)
+  {
+    return self::get_named_reference($this->_object, $name, $create, $default);
+  }
+
+  /** Returns direct reference to a field, using dot notation.
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   * @param $create TRUE to create a field if it's missing
+   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   *  */
+  public static function &get_named_reference(&$arr, $name, $create = false, $default = null)
+  {
+    $keys = explode('.', $name);
+    $data = & $arr;
+    foreach ($keys as $i => $key)
+    {
+      if (!isset($data[$key]))
+      {
+        if ($create)
+        {
+          $data[$key] = $i == count($keys) - 1 ? $default : array();
+        }
+        else
+        {
+          $nil = $default;
+          return $nil;
+        }
+      }
+      $data = & $data[$key];
+    }
+    return $data;
+  }
+
+  /** Unsets a field using dot notation
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   *  */
+  public static function unset_named_reference(&$arr, $name)
+  {
+    $keys = explode('.', $name);
+    $data = & $arr;
+    foreach ($keys as $i => $key)
+    {
+      if (isset($data[$key]))
+      {
+        if ($i == count($keys) - 1)
+        {
+          unset($data[$key]);
+          return;
+        }
+        $data = & $data[$key];
+      }
+      else
+      {
+        return;
+      }
+    }
+  }
+
 }
 

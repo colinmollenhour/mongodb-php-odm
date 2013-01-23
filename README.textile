@@ -6,6 +6,22 @@ h2. Overview
 
 MongoDb PHP ODM is a simple object wrapper for the Mongo PHP driver classes which makes using Mongo in your PHP application more like ORM, but _without_ the suck. It is designed for use with "Kohana 3":http://github.com/kohana/core but will also integrate easily with any PHP application with almost no additional effort.
 
+h3. PanRafal's fork
+
+This fork adds quite a lot of functionality, to already very usable class:
+* Most of mongo field functions like *inc*, *push*, *pull* etc. will be emulated, so you don't have to reload the document to see the changed values. Actual document processing is of course still done on the server.
+* Mongo_Subdocument allows to create simple models for subdocuments
+* Static configuration and model declaration, handy if you don't use it in Kohana
+* Ability to override connection instance for testing purposes
+* Helper functions for some commands like *geoNear*, *mapReduce*, *distinct*, capped collections...
+* Mongo_Document implements ArrayAccess, allowing to get/set values using dot notation. Additional get() and getRaw() functions.
+* $_references allow to use getter and setter functions for properties
+* trying to load a non-existent document will keep it's ID. You can reuse this object to create a new one
+* change_id() for easy changing of document id's
+
+Apart from keeping the ID (and only ID) after failed load, everything else is backwards compatible with the original
+library.
+
 h2. Design Principles
 
 * *Don't become overly complex.* There are some features that could be implemented, but if they are not it is because they would increase the complexity too much, sacrificing elegance and usability.

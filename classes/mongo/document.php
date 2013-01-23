@@ -141,12 +141,14 @@
  * @package Mongo_Database
  */
 
-abstract class Mongo_Document {
+abstract class Mongo_Document implements ArrayAccess {
 
   const SAVE_INSERT = 'insert';
   const SAVE_UPDATE = 'update';
   const SAVE_UPSERT = 'upsert';
 
+  public static $models = array ();
+  
   /**
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
@@ -157,7 +159,18 @@ abstract class Mongo_Document {
    */
   public static function factory($name, $load = NULL)
   {
-    $class = 'Model_'.implode('_',array_map('ucfirst', explode('_',$name)));
+    if (isset(self::$models[$name]))
+    {
+      $class = self::$models[$name];
+    }
+    else if (strpos($name, '\\') !== false)
+    {
+      $class = $name;
+    }
+    else
+    {
+      $class = 'Model_' . implode('_', array_map('ucfirst', explode('_', $name)));
+    }
     return new $class($load);
   }
 
@@ -196,6 +209,14 @@ abstract class Mongo_Document {
    * );
    * </pre>
    *
+   * You can also specify getter and setter functions:
+   * 'getter' - NULL will make the value write-only, 
+   *            string will call $this->{$getter}($name), 
+   *            callable will be called as $getter($this, $name)
+   * 'setter' - NULL will make the value read-only, 
+   *            string will call $this->{$setter}($value), 
+   *            callable will be called as $setter($value, $this, $name)
+   * 
    *  @var  array */
   protected $_references = array();
 
@@ -216,6 +237,29 @@ abstract class Mongo_Document {
    *  @var  array */
   protected $_aliases = array();
 
+  /** If set to TRUE, operator functions (set, inc, push etc.) will emulate database functions for eventual consistency. 
+   * For example this will print '2':
+   * <code>
+   * $doc = new Mongo_Document();
+   * $doc->_emulate = true;
+   * $doc->number = 1;
+   * $doc->inc('number');
+   * echo $doc->number;
+   * </code>
+   * 
+   * If set to FALSE, the field will be marked as dirty, and the new value will only be available after reload.
+   * This will print '1':
+   * <code>
+   * $doc = new Mongo_Document();
+   * $doc->_emulate = false;
+   * $doc->number = 1;
+   * $doc->inc('number');
+   * echo $doc->number;
+   * </code>
+   * 
+   *  */
+  protected $_emulate = false;
+  
   /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
    *  @var  array */
   public $__data = array();
@@ -347,6 +391,9 @@ abstract class Mongo_Document {
   public function __isset($name)
   {
     $name = $this->get_field_name($name, FALSE);
+    if (isset($this->_object[$name])) return true;
+    // check for dirties...
+    if ($this->get($name)) return true;
     return isset($this->_object[$name]);
   }
 
@@ -390,6 +437,24 @@ abstract class Mongo_Document {
       $name = $this->get_field_name($name);
       return isset($this->_changed[$name]) || isset($this->_dirty[$name]);
     }
+  }
+
+  /** Return TRUE if document is being created */
+  public function is_new()
+  {
+    return !isset($this->_object['_id']) || isset($this->_changed['_id']);
+  }
+
+  /** Returns TRUE if document actually exists in the database */
+  public function exists()
+  {
+    return $this->_loaded || ($this->_loaded === NULL && $this->load_if_needed(false));
+  }
+
+  /** Changes emulation mode. See $this->_emulate */
+  public function set_emulation($emulate)
+  {
+    $this->_emulate = $emulate;
   }
 
   /**
@@ -476,7 +541,7 @@ abstract class Mongo_Document {
     // http://php.net/manual/en/reserved.keywords.php
     if($name == 'unset')
     {
-        return $this->_unset($arguments[0]);
+      return $this->_unset($arguments[0]);
     }
 
     $parts = explode('_', $name, 2);
@@ -520,6 +585,12 @@ abstract class Mongo_Document {
     // Auto-loading for special references
     if(array_key_exists($name, $this->_references))
     {
+      if (isset($this->_references[$name]['getter']))
+      {
+        if ($this->_references[$name]['getter'] == null) throw new \Exception("'$name' is write only!");
+        else if (is_string($this->_references[$name]['getter'])) return call_user_func([$this, $this->_references[$name]['getter']], $name);
+        else return call_user_func([$this, $this->_references[$name]['getter']], $this, $name);
+      }
       if( ! isset($this->_related_objects[$name]))
       {
         $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
@@ -552,19 +623,29 @@ abstract class Mongo_Document {
       return $this->_related_objects[$name];
     }
 
+    $this->load_if_needed($name);
+
+    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+  }
+
+  /**
+   * Reload document only if there is need for it
+   * @param $name Name of the field to check for (no dot notation)
+   */
+  protected function load_if_needed($name)
+  {
     // Reload when retrieving dirty data
-    if($this->_loaded && empty($this->_operations) && ! empty($this->_dirty[$name]))
+    if ($this->_loaded && empty($this->_operations) && !empty($this->_dirty[$name]))
     {
-      $this->load();
+      return $this->load();
     }
 
     // Lazy loading!
-    else if($this->_loaded === NULL && isset($this->_object['_id']) && ! isset($this->_changed['_id']) && $name != '_id')
+    else if ($this->_loaded === NULL && isset($this->_object['_id']) && !isset($this->_changed['_id']) && $name != '_id')
     {
-      $this->load();
+      return $this->load();
     }
-
-    return isset($this->_object[$name]) ? $this->_object[$name] : NULL;
+    return false;
   }
 
   /**
@@ -586,11 +667,19 @@ abstract class Mongo_Document {
    */
   public function __set($name, $value)
   {
+
+      
     $name = $this->get_field_name($name, FALSE);
 
     // Automatically save references to other Mongo_Document objects
     if(array_key_exists($name, $this->_references))
     {
+      if (isset($this->_references[$name]['setter']))
+      {
+        if ($this->_references[$name]['setter'] == null) throw new \Exception("'$name' is read only!");
+        else if (is_string($this->_references[$name]['setter'])) return call_user_func([$this, $this->_references[$name]['setter']], $value, $name);
+        else return call_user_func([$this, $this->_references[$name]['setter']], $value, $this, $name);
+      }
       if( ! $value instanceof Mongo_Document)
       {
         throw new Exception('Cannot set reference to object that is not a Mongo_Document');
@@ -629,22 +718,54 @@ abstract class Mongo_Document {
     return $this;
   }
 
+  /** Get the value for a key (using dot notation)  */
+  public function get($name, $default = null)
+  {
+    $name = $this->get_field_name($name);
+    $dotPos = strpos($name, '.');
+    if (!$dotPos && $default === null)
+    {
+      return $this->__get($name);
+    }
+    $this->load_if_needed($dotPos ? substr($name, 0, $dotPos) : $name);
+    $ref = $this->get_field_reference($name, false, $default);
+    return $ref;
+  }
+
+  /** Get the raw value for a key (using dot notation), without lazy loading, aliasing and references  */
+  public function get_raw($name, $default = null)
+  {
+    $ref = $this->get_field_reference($name, false, $default);
+    return $ref;
+  }
+
   /**
    * Set the value for a key. This function must be used when updating nested documents.
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The data to be saved
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function set($name, $value)
+  public function set($name, $value, $emulate = null)
   {
-    if( ! strpos($name, '.')) {
+    if (!strpos($name, '.'))
+    {
       $this->__set($name, $value);
       return $this;
     }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true);
+      $ref = $value;
+      return $this;
+    }
   }
 
   /**
@@ -654,13 +775,22 @@ abstract class Mongo_Document {
    *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return Mongo_Document
    */
-  public function _unset($name)
+  public function _unset($name, $emulate = null)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$unset'][$name] = 1;
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      self::unset_named_reference($this->_object, $name);
+      return $this;
+    }
   }
 
   /**
@@ -668,9 +798,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The amount to increment by (default is 1)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function inc($name, $value = 1)
+  public function inc($name, $value = 1, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$inc'][$name]))
@@ -681,7 +812,16 @@ abstract class Mongo_Document {
     {
       $this->_operations['$inc'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, 0);
+      $ref += $value;
+      return $this;
+    }
   }
 
   /**
@@ -689,9 +829,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value The value to push
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function push($name, $value)
+  public function push($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -709,7 +850,17 @@ abstract class Mongo_Document {
     {
       $this->_operations['$push'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, array());
+      if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+      array_push($ref, $value);
+      return $this;
+    }
   }
 
   /**
@@ -717,9 +868,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of values to push
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pushAll($name, $value)
+  public function pushAll($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pushAll'][$name]))
@@ -730,33 +882,56 @@ abstract class Mongo_Document {
     {
       $this->_operations['$pushAll'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, array());
+      if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+      foreach ($value as $v) array_push($ref, $v);
+      return $this;
+    }
   }
 
   /**
    * Pop a value from the end of an array
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $last Pass TRUE to pop last element
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pop($name)
+  public function pop($name, $last = true, $emulate = null)
   {
     $name = $this->get_field_name($name);
-    $this->_operations['$pop'][$name] = 1;
-    return $this->_set_dirty($name);
+    $this->_operations['$pop'][$name] = $last ? 1 : -1;
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, null);
+      if ($ref === null) return $this;
+      if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
+      if ($last) array_pop($ref);
+      else array_shift($ref);
+      return $this;
+    }
   }
 
   /**
    * Pop a value from the beginning of an array
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function shift($name)
+  public function shift($name, $emulate = null)
   {
-    $name = $this->get_field_name($name);
-    $this->_operations['$pop'][$name] = -1;
-    return $this->_set_dirty($name);
+    return $this->pop($name, false, $emulate);
   }
 
   /**
@@ -764,9 +939,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pull($name, $value)
+  public function pull($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -784,7 +960,20 @@ abstract class Mongo_Document {
     {
       $this->_operations['$pull'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, null);
+      if ($ref === null) return $this;
+      if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
+      $ref = array_filter($ref, function($v) use ($value) {
+                return $v !== $value;
+              });
+      return $this;
+    }
   }
 
   /**
@@ -792,9 +981,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value An array of value to pull from the array
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pullAll($name, $value)
+  public function pullAll($name, array $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$pullAll'][$name]))
@@ -805,7 +995,20 @@ abstract class Mongo_Document {
     {
       $this->_operations['$pullAll'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true, null);
+      if ($ref === null) return $this;
+      if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
+      $ref = array_filter($ref, function($v) use ($value) {
+                return !in_array($v, $value, true);
+              });
+      return $this;
+    }
   }
 
   /**
@@ -813,6 +1016,7 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   array   $value
+   * @todo some emulation love
    * @return  Mongo_Document
    */
   public function bit($name,$value)
@@ -827,9 +1031,10 @@ abstract class Mongo_Document {
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
    * @param   mixed   $value  The value to add to the set
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function addToSet($name, $value)
+  public function addToSet($name, $value, $emulate = null)
   {
     $name = $this->get_field_name($name);
     if(isset($this->_operations['$addToSet'][$name]))
@@ -854,7 +1059,27 @@ abstract class Mongo_Document {
     {
       $this->_operations['$addToSet'][$name] = $value;
     }
-    return $this->_set_dirty($name);
+    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    {
+      return $this->_set_dirty($name);
+    }
+    else
+    {
+      $ref = & $this->get_field_reference($name, true);
+      if ($ref === null)
+      {
+        $ref = array($value);
+      }
+      else
+      {
+        if (!is_array($ref)) throw new Exception("Value '$name' cannot be set as an array"); // $ref = array($ref);
+        if (!in_array($value, $ref, true))
+        {
+          array_push($ref, $value);
+        }
+      }
+      return $this;
+    }
   }
 
   /**
@@ -948,6 +1173,7 @@ abstract class Mongo_Document {
    */
   public function load($criteria = array(), array $fields = array())
   {
+    $keepId = null;  
     // Use of json for querying is allowed
     if(is_string($criteria) && $criteria[0] == "{")
     {
@@ -956,16 +1182,19 @@ abstract class Mongo_Document {
 
     else if($criteria && ! is_array($criteria))
     {
+      $keepId = $criteria; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $criteria);
     }
 
     else if(isset($this->_object['_id']))
     {
+      $keepId = $this->_object['_id']; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $this->_object['_id']);
     }
 
     else if(isset($criteria['id']))
     {
+      $keepId = $criteria['id']; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $criteria['id']);
     }
 
@@ -1000,6 +1229,9 @@ abstract class Mongo_Document {
     }
 
     $this->load_values($values, TRUE);
+    
+    if (!$this->_loaded && $keepId) $this->id = $keepId; // restore the id previously set on this object...
+    
     return $this->_loaded;
   }
 
@@ -1235,6 +1467,129 @@ abstract class Mongo_Document {
     }
 
     return $merged;
+  }
+
+   
+  public function offsetExists($name)
+  {
+    return $this->__isset($name);
+  }
+
+  public function offsetGet($name)
+  {
+    return $this->get($name);
+  }
+
+  public function offsetSet($name, $value)
+  {
+    $this->set($name, $value, true);
+  }
+
+  public function offsetUnset($name)
+  {
+    $this->_unset($name, true);
+  }
+
+  /** Returns direct reference to a field, using dot notation.
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   * @param $create TRUE to create a field if it's missing
+   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   *  */
+  public function &get_field_reference($name, $create = false, $default = null)
+  {
+    return self::get_named_reference($this->_object, $name, $create, $default);
+  }
+
+  /** Returns direct reference to a field, using dot notation.
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   * @param $create TRUE to create a field if it's missing
+   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   *  */
+  public static function &get_named_reference(&$arr, $name, $create = false, $default = null)
+  {
+    $keys = explode('.', $name);
+    $data = & $arr;
+    foreach ($keys as $i => $key)
+    {
+      if (!isset($data[$key]))
+      {
+        if ($create)
+        {
+          $data[$key] = $i == count($keys) - 1 ? $default : array();
+        }
+        else
+        {
+          $nil = $default;
+          return $nil;
+        }
+      }
+      $data = & $data[$key];
+    }
+    return $data;
+  }
+
+  /** Unsets a field using dot notation
+   * @param $arr Array with data
+   * @param $name Dot notation name
+   *  */
+  public static function unset_named_reference(&$arr, $name)
+  {
+    $keys = explode('.', $name);
+    $data = & $arr;
+    foreach ($keys as $i => $key)
+    {
+      if (isset($data[$key]))
+      {
+        if ($i == count($keys) - 1)
+        {
+          unset($data[$key]);
+          return;
+        }
+        $data = & $data[$key];
+      }
+      else
+      {
+        return;
+      }
+    }
+  }
+
+  /** Change ID of the current document. 
+   * 
+   * The workflow:
+   * - checks the existence of new object,
+   * - saves current object, 
+   * - reloads it (to keep in sync with db), 
+   * - removes the old one (we have to do it now, to not to fall under unique constraints),
+   * - stores a new copy.
+   * 
+   * @warning If reinsertion results in the error, you will loose data
+   * 
+   * @todo Specific exception for reinsertion, or another way to handle this scenario.
+   * 
+   * @param $newId - new id to use
+   * @param $reload - TRUE to load the document after saving
+   * @param $overwrite - TRUE to overwrite existing document, FALSE to throw an exception if it exists
+   */
+  public function change_id($newId, $reload = true, $overwrite = false)
+  {
+    $oldId = $this->id;
+    if ($overwrite) $this->collection()->remove(array('_id' => $newId));
+    else if ($this->collection()->findOne($newId)) throw new MongoException("Document '$newId' already exists!");
+    if ($this->_changed || $this->_operations) $this->save();
+    if ($reload)
+    {
+      if (!$this->load()) throw new MongoException('Document failed to reload!');
+    }
+    $this->id = $newId;
+    foreach ($this->_object as $name => $v)
+    {
+      $this->_changed[$name] = TRUE;
+    }
+    $this->collection()->remove(array('_id' => $oldId));
+    $this->save();
   }
 
 }

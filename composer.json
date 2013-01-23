@@ -1,0 +1,7 @@
+{
+	"name": "colinmollenhour/mongodb-php-odm",
+	"version": "1.0",
+	"autoload": {
+		"classmap": ["classes/"]
+	}
+}

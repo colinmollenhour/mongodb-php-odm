@@ -77,6 +77,8 @@ class Mongo_Database {
    *  @static  array */
   protected static $instances = array();
   
+  public static $configs = array();
+  
   /**
    * @var   string     default db to use
    */
@@ -94,21 +96,29 @@ class Mongo_Database {
    *
    * @param   string $name   The configuration name
    * @param   array $config  Pass a configuration array to bypass the Kohana config
+   * @param   $override      Overrides current instance with a new one (usefull for testing)
    * @return  Mongo_Database
    * @static
    */
-  public static function instance($name = NULL, array $config = NULL)
+  public static function instance($name = NULL, array $config = NULL, $override = false)
   {
     if ($name === NULL)
     {
       $name = self::$default;
     }
-    if( ! isset(self::$instances[$name]) )
+    if( $override || ! isset(self::$instances[$name]) )
     {
       if ($config === NULL)
       {
-        // Load the configuration for this database
-        $config = Kohana::$config->load('mongo')->$name;
+        if (isset(self::$configs[$name]))
+        {
+          $config = self::$configs[$name];
+          if ($config instanceof Closure) $config = $config($name);
+        } else if (class_exists('Kohana'))
+        {
+          // Load the configuration for this database
+          $config = Kohana::$config->load('mongo')->$name;
+        }
       }
 
       new self($name,$config);
@@ -447,6 +457,13 @@ class Mongo_Database {
   public function profiler_stop($token)
   {
     call_user_func($this->_stop_callback, $token);
+  }
+
+  
+  /** @return Mongo */
+  public function connection()
+  {
+    return $this->_connection;
   }
 
 }

@@ -141,7 +141,7 @@
  * @package Mongo_Database
  */
 
-abstract class Mongo_Document {
+abstract class Mongo_Document implements ArrayAccess {
 
   const SAVE_INSERT = 'insert';
   const SAVE_UPDATE = 'update';
@@ -1425,6 +1425,27 @@ abstract class Mongo_Document {
     }
 
     return $merged;
+  }
+
+   
+  public function offsetExists($name)
+  {
+    return $this->__isset($name);
+  }
+
+  public function offsetGet($name)
+  {
+    return $this->get($name);
+  }
+
+  public function offsetSet($name, $value)
+  {
+    $this->set($name, $value, true);
+  }
+
+  public function offsetUnset($name)
+  {
+    $this->_unset($name, true);
   }
 
   /** Returns direct reference to a field, using dot notation.

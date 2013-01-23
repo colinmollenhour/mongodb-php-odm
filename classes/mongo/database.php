@@ -109,13 +109,15 @@ class Mongo_Database {
     {
       if ($config === NULL)
       {
-          if (isset(self::$configs[$name])) {
-              $config = self::$configs[$name];
-              if ($config instanceof Closure) $config = $config($name);
-          } else if (class_exists('Kohana')) {
-            // Load the configuration for this database
-            $config = Kohana::$config->load('mongo')->$name;
-          }
+        if (isset(self::$configs[$name]))
+        {
+          $config = self::$configs[$name];
+          if ($config instanceof Closure) $config = $config($name);
+        } else if (class_exists('Kohana'))
+        {
+          // Load the configuration for this database
+          $config = Kohana::$config->load('mongo')->$name;
+        }
       }
 
       new self($name,$config);

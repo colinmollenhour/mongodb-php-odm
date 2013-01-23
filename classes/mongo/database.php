@@ -451,8 +451,9 @@ class Mongo_Database {
 
   
   /** @return Mongo */
-  public function connection() {
-      return $this->_connection;
+  public function connection()
+  {
+    return $this->_connection;
   }
-  
+
 }

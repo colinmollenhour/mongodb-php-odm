@@ -492,10 +492,11 @@ class Mongo_Collection implements Iterator, Countable
     return isset($this->_options[$name]) ? $this->_options[$name] : NULL;
   }
 
-  public function get_query() {
-      return $this->_query;
+  public function get_query()
+  {
+    return $this->_query;
   }
-  
+
   /**
    * Set a cursor option. Will apply to currently loaded cursor if it has not started iterating.
    * Also supports setting 'query' and 'fields'.
@@ -1180,26 +1181,28 @@ class Mongo_Collection implements Iterator, Countable
    * 
    * @return Array of Mongo_Document objects with distance set as $distanceKey (_distance by default)
    */
-  public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance') {
-      $options = array_merge(
-              ['geoNear' => $this->name, 'near' => $near]
-              , $options);
-	  if ($query) $options['query'] = $query;
-	  if ($maxDistance) $options['maxDistance'] = $maxDistance;
-	  if ($num) $options['num'] = $num;
-	  $result = $this->db()->command_safe($options);
-	  $objects = $result['results'];
-	  $docs = array();
-	  foreach($objects as $object) {
-		$doc = clone $this->get_model();
-		$objData = $object['obj'];
-		$objData[$distanceKey] = $object['dis'];
-		$doc->load_values($objData, TRUE);
-		$docs[] = $doc;
-	  }
-	  return $docs;
+  public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance')
+  {
+    $options = array_merge(
+            ['geoNear' => $this->name, 'near' => $near]
+            , $options);
+    if ($query) $options['query'] = $query;
+    if ($maxDistance) $options['maxDistance'] = $maxDistance;
+    if ($num) $options['num'] = $num;
+    $result = $this->db()->command_safe($options);
+    $objects = $result['results'];
+    $docs = array();
+    foreach ($objects as $object)
+    {
+      $doc = clone $this->get_model();
+      $objData = $object['obj'];
+      $objData[$distanceKey] = $object['dis'];
+      $doc->load_values($objData, TRUE);
+      $docs[] = $doc;
+    }
+    return $docs;
   }
-  
+
   /**
    *    map : <mapfunction>,
    reduce : <reducefunction>,
@@ -1215,55 +1218,61 @@ class Mongo_Collection implements Iterator, Countable
  }
 );
    */
-  public function mapReduce($map, $reduce, $out = true, $query = false, $sort = false, array $options = array()) {
-      if ($out == true) $out = ['inline' => true];
-      $options = array_merge(array(
-          'mapreduce' => $this->name,
-          'map' => $map,
-          'reduce' => $reduce,
-          'out' => $out,
-          'query' => $query,
-          'sort' => $sort,
-      ), $options);
-      if (empty($options['query'])) unset($options['query']);
-      if (empty($options['sort'])) unset($options['sort']);
-      return $this->db()->command_safe($options);
-  }
-  
-  public function distinct($key, $query = array()) {
-      return $this->db()->command_safe(array(
-          'distinct' => $this->name,
-          'key' => $key,
-          'query' => $query
-      ));
+  public function mapReduce($map, $reduce, $out = true, $query = false, $sort = false, array $options = array())
+  {
+    if ($out == true) $out = ['inline' => true];
+    $options = array_merge(array(
+        'mapreduce' => $this->name,
+        'map'       => $map,
+        'reduce'    => $reduce,
+        'out'       => $out,
+        'query'     => $query,
+        'sort'      => $sort,
+            ), $options);
+    if (empty($options['query'])) unset($options['query']);
+    if (empty($options['sort'])) unset($options['sort']);
+    return $this->db()->command_safe($options);
   }
 
-  public function aggregate($pipeline) {
-      return $this->db()->command_safe(array(
-          'aggregate' => $this->name,
-          'pipeline' => $pipeline,
-      ));
-  }  
+  public function distinct($key, $query = array())
+  {
+    return $this->db()->command_safe(array(
+                'distinct' => $this->name,
+                'key'      => $key,
+                'query'    => $query
+            ));
+  }
+
+  public function aggregate($pipeline)
+  {
+    return $this->db()->command_safe(array(
+                'aggregate' => $this->name,
+                'pipeline'  => $pipeline,
+            ));
+  }
 
   /***/
-  public function isCapped() {
-      $stats = $this->stats();
-      return !empty($stats['capped']);
-  }  
+  public function isCapped()
+  {
+    $stats = $this->stats();
+    return !empty($stats['capped']);
+  }
 
   /** The emptycapped command removes all documents from a capped collection. */
-  public function emptyCapped() {
-      return $this->db()->command_safe(array(
-          'emptycapped' => $this->name,
-      ));
-  }  
+  public function emptyCapped()
+  {
+    return $this->db()->command_safe(array(
+                'emptycapped' => $this->name,
+            ));
+  }
 
   /** The collStats command returns a variety of storage statistics for a given collection. */
-  public function stats($scale = 1024) {
-      return $this->db()->command_safe(array(
-          'collStats' => $this->name,
-          'scale' => $scale
-      ));
-  }  
+  public function stats($scale = 1024)
+  {
+    return $this->db()->command_safe(array(
+                'collStats' => $this->name,
+                'scale'     => $scale
+            ));
+  }
 
 }

@@ -948,6 +948,7 @@ abstract class Mongo_Document {
    */
   public function load($criteria = array(), array $fields = array())
   {
+    $keepId = null;  
     // Use of json for querying is allowed
     if(is_string($criteria) && $criteria[0] == "{")
     {
@@ -956,16 +957,19 @@ abstract class Mongo_Document {
 
     else if($criteria && ! is_array($criteria))
     {
+      $keepId = $criteria; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $criteria);
     }
 
     else if(isset($this->_object['_id']))
     {
+      $keepId = $this->_object['_id']; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $this->_object['_id']);
     }
 
     else if(isset($criteria['id']))
     {
+      $keepId = $criteria['id']; // in case if we won't load it, we should set this object to this id
       $criteria = array('_id' => $criteria['id']);
     }
 
@@ -1000,6 +1004,9 @@ abstract class Mongo_Document {
     }
 
     $this->load_values($values, TRUE);
+    
+    if (!$this->_loaded && $keepId) $this->id = $keepId; // restore the id previously set on this object...
+    
     return $this->_loaded;
   }
 

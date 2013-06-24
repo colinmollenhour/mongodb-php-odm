@@ -171,7 +171,7 @@ class Mongo_Database {
                 ? $config['server']
                 : "mongodb://".ini_get('mongo.default_host').":".ini_get('mongo.default_port');
 
-    $this->_connection = new Mongo($server, $options);
+    $this->_connection = new MongoClient($server, $options);
     
     // Save the database name for later use
     $this->_db = $config['database'];

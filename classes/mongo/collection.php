@@ -128,7 +128,7 @@ class Mongo_Collection implements Iterator, Countable
     {
       if ($db === NULL)
       {
-        $db = Mongo_Database::$default;
+        $db = Kohana::$environment;
       }
       $this->db = $db;
       $this->name = $name;

@@ -416,7 +416,7 @@ abstract class Mongo_Document {
       {
         if ($this->db === NULL)
         {
-          $this->db = Mongo_Database::$default;
+          $this->db = Kohana::$environment;
         }
         return new Mongo_Collection($this->name, $this->db, $this->gridFS, get_class($this));
       }

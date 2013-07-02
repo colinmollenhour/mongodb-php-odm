@@ -9,12 +9,24 @@ return array(
         'options'   => array(),
         'profiling' => TRUE,
     ),
+	Kohana::TESTING => array(
+		'database'  => '40_db_v1',
+		'server'	=> 'mongodb://localhost:27017',
+		'options'   => array(),
+		'profiling' => TRUE,
+	),
     Kohana::STAGING => array(
         'database'  => '40_db_v1',
 		'server'	=> 'mongodb://localhost:27017',
         'options'   => array(),
         'profiling' => TRUE,
     ),
+	Kohana::PRODUCTION => array(
+		'database'  => '40_db_v1',
+		'server'	=> 'mongodb://localhost:27017',
+		'options'   => array(),
+		'profiling' => TRUE,
+	),
     'default' => array(
         'database'  => 'db_v1',
 		'server'	=> 'mongodb://localhost:27017',

@@ -31,27 +31,27 @@
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
  * </code>
  *
- * @method array aggregate(array $pipelines)
- * @method mixed batchInsert(array $a, array $options = array())
- * @method array createDBRef(array $a)
- * @method array deleteIndex(mixed $keys)
+ * @method array aggregate( array $pipelines )
+ * @method mixed batchInsert( array $a, array $options = array() )
+ * @method array createDBRef( array $a )
+ * @method array deleteIndex( mixed $keys )
  * @method array deleteIndexes()
- * @method array distinct(string $key, array $query = array())
+ * @method array distinct( string $key, array $query = array() )
  * @method array drop()
- * @method bool ensureIndex(mixed $keys, array $options = array())
+ * @method bool ensureIndex( mixed $keys, array $options = array() )
  * @method array getDBRef(array $ref)
  * @method array getIndexInfo()
  * @method string getName()
  * @method array getReadPreference()
  * @method bool getSlaveOkay()
- * @method array group(mixed $keys, array $initial, MongoCode $reduce, array $options = array())
- * @method bool|array insert(array $data, array $options = array())
- * @method bool|array remove(array $criteria = array(), array $options = array())
- * @method mixed save(array $a, array $options = array())
- * @method bool setReadPreference(int $read_preference, array $tags = array())
- * @method bool setSlaveOkay(bool $ok = true)
- * @method bool|array update(array $criteria, array $new_object, array $options = array())
- * @method array validate(bool $scan_data = false)
+ * @method array group( mixed $keys, array $initial, MongoCode $reduce, array $options = array() )
+ * @method bool|array insert( array $data, array $options = array() )
+ * @method bool|array remove( array $criteria = array(), array $options = array() )
+ * @method mixed save( array $a, array $options = array() )
+ * @method bool setReadPreference( string $read_preference, array $tags = array() )
+ * @method bool setSlaveOkay( bool $ok = TRUE )
+ * @method bool|array update( array $criteria, array $new_object, array $options = array() )
+ * @method array validate( bool $scan_data = FALSE )
  *
  * @author  Colin Mollenhour
  * @package Mongo_Database
@@ -139,7 +139,7 @@ class Mongo_Collection implements Iterator, Countable
       $this->_model = $model;
     }
   }
-  
+
   /**
    * Cloned objects have uninitialized cursors.
    */
@@ -226,7 +226,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Set some criteria for the query. Unlike MongoCollection::find, this can be called multiple
-   * times and the query paramters will be merged together.
+   * times and the query parameters will be merged together.
    *
    * <pre>
    * Usages:
@@ -235,7 +235,7 @@ class Mongo_Collection implements Iterator, Countable
    *   $query is a JSON string that will be interpreted as the query criteria
    * </pre>
    *
-   * @param   mixed $query  An array of paramters or a key
+   * @param   mixed $query  An array of parameters or a key
    * @param   mixed $value  If $query is a key, this is the value
    * @throws  MongoCursorException
    * @throws  Exception
@@ -548,7 +548,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Is the query executed yet?
-   * 
+   *
    * @return bool
    */
   public function is_loaded()
@@ -655,7 +655,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Simple findAndModify helper
-   * 
+   *
    * @param null|array $command
    * @return array
    */
@@ -710,7 +710,7 @@ class Mongo_Collection implements Iterator, Countable
    *
    * @param array $criteria
    * @param array $update
-   * @param array $options 
+   * @param array $options
    * @return bool|int|MongoId
    * @throws MongoException on error
    */

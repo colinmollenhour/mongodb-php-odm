@@ -6,7 +6,7 @@
  * <code>
  *  $db = Mongo_Database::instance();
  * </code>
- * 
+ *
  * The above will assume the 'default' configuration from the APPPATH/config/mongo.php file.
  * Alternatively it may be instantiated with the name and configuration specified as arguments:
  *
@@ -25,25 +25,27 @@
  *
  * If using Kohana, profiling can be enabled/disabled via the configuration or on demand by setting the profiling property.
  *
- * @method array authenticate( string $username , string $password )
- * @method array command( array $data )
- * @method MongoCollection createCollection( string $name, bool $capped = FALSE, int $size = 0, int $max = 0 )
- * @method array createDBRef( mixed $ns , mixed $a )
+ * @method array authenticate( string $username, string $password )
+ * @method array command( array $data, array $options = array() )
+ * @method MongoCollection createCollection( string $name, array $options = array() )
+ * @method array createDBRef( string $collection, mixed $a )
  * @method array drop()
  * @method array dropCollection( mixed $coll )
+ * @method array execute( mixed $code, array $args = array() )
  * @method bool forceError()
+ * @method array getCollectionNames( bool $includeSystemCollections = FALSE )
  * @method array getDBRef( array $ref )
  * @method int getProfilingLevel()
  * @method array getReadPreference()
  * @method bool getSlaveOkay()
  * @method array lastError()
- * @method array listCollections()
+ * @method array listCollections( bool $includeSystemCollections = FALSE )
  * @method array prevError()
  * @method array repair( bool $preserve_cloned_files = FALSE, bool $backup_original_files = FALSE )
  * @method array resetError()
  * @method int setProfilingLevel( int $level )
  * @method bool setReadPreference(int $read_preference, array $tags = array())
- * @method bool setSlaveOkay(bool $ok = true)
+ * @method bool setSlaveOkay( bool $ok = TRUE )
  *
  * @author  Colin Mollenhour
  * @package Mongo_Database
@@ -76,7 +78,7 @@ class Mongo_Database {
   /** Mongo_Database instances
    *  @static  array */
   protected static $instances = array();
-  
+
   /**
    * @var   string     default db to use
    */
@@ -172,13 +174,13 @@ class Mongo_Database {
                 : "mongodb://".ini_get('mongo.default_host').":".ini_get('mongo.default_port');
 
     $this->_connection = new MongoClient($server, $options);
-    
+
     // Save the database name for later use
     $this->_db = $config['database'];
 
     // Set the collection class name
     $this->_collection_class = (isset($config['collection']) ? $config['collection'] : 'Mongo_Collection');
-    
+
     // Save profiling option in a public variable
     $this->profiling = (isset($config['profiling']) && $config['profiling']);
 
@@ -208,7 +210,7 @@ class Mongo_Database {
   /**
    * Force the connection to be established.
    * This will automatically be called by any MongoDB methods that are proxied via __call
-   * 
+   *
    * @return boolean
    * @throws MongoException
    */
@@ -227,7 +229,7 @@ class Mongo_Database {
       {
         $this->profiler_stop($_bm);
       }
-      
+
       $this->_db = $this->_connection->selectDB("$this->_db");
     }
     return $this->_connected;
@@ -338,7 +340,7 @@ class Mongo_Database {
 
   /**
    * Get a Mongo_Collection instance (wraps MongoCollection)
-   * 
+   *
    * @param  string  $name
    * @return Mongo_Collection
    */
@@ -417,9 +419,9 @@ class Mongo_Database {
 
   /**
    * Set the profiler callback. Defaults to Kohana profiler.
-   * 
+   *
    * @param callback $start
-   * @param callback $stop 
+   * @param callback $stop
    */
   public function set_profiler($start, $stop)
   {

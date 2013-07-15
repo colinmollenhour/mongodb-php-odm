@@ -977,6 +977,8 @@ class Mongo_Collection implements Iterator, Countable
     {
       $this->db()->profiler_stop($bm);
     }
+    
+    if (is_array($count)) throw new MongoException(json_encode($count));
 
     return $count;
   }

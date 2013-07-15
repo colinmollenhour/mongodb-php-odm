@@ -139,7 +139,7 @@ class Mongo_Collection implements Iterator, Countable
       $this->_model = $model;
     }
   }
-  
+
   /**
    * Cloned objects have uninitialized cursors.
    */
@@ -226,7 +226,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Set some criteria for the query. Unlike MongoCollection::find, this can be called multiple
-   * times and the query paramters will be merged together.
+   * times and the query parameters will be merged together.
    *
    * <pre>
    * Usages:
@@ -235,7 +235,7 @@ class Mongo_Collection implements Iterator, Countable
    *   $query is a JSON string that will be interpreted as the query criteria
    * </pre>
    *
-   * @param   mixed $query  An array of paramters or a key
+   * @param   mixed $query  An array of parameters or a key
    * @param   mixed $value  If $query is a key, this is the value
    * @throws  MongoCursorException
    * @throws  Exception
@@ -548,7 +548,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Is the query executed yet?
-   * 
+   *
    * @return bool
    */
   public function is_loaded()
@@ -655,7 +655,7 @@ class Mongo_Collection implements Iterator, Countable
 
   /**
    * Simple findAndModify helper
-   * 
+   *
    * @param null|array $command
    * @return array
    */
@@ -710,7 +710,7 @@ class Mongo_Collection implements Iterator, Countable
    *
    * @param array $criteria
    * @param array $update
-   * @param array $options 
+   * @param array $options
    * @return bool|int|MongoId
    * @throws MongoException on error
    */
@@ -977,7 +977,7 @@ class Mongo_Collection implements Iterator, Countable
     {
       $this->db()->profiler_stop($bm);
     }
-    
+
     if (is_array($count)) throw new MongoException(json_encode($count));
 
     return $count;

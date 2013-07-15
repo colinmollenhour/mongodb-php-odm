@@ -1,0 +1,9 @@
+{
+	"name": "colinmollenhour/mongodb-php-odm",
+	"version": "1.0",
+    "description": "MongoDb PHP ODM is a simple object wrapper for the Mongo PHP driver classes which makes using Mongo in your PHP application more like ORM, but without the suck. It is designed for use with Kohana 3 but will also integrate easily with any PHP application with almost no additional effort.",
+    "license": "",
+	"autoload": {
+		"classmap": ["classes/"]
+	}
+}

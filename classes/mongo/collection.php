@@ -748,12 +748,14 @@ class Mongo_Collection implements Iterator, Countable
    *
    * Returns number of documents removed if "safe", otherwise just if the operation was successfully sent.
    *
-   * @param array $criteria
-   * @param array $options
+   * [!!] Note: You cannot use this method with a capped collection.
+   *
+   * @param array $criteria  Description of records to remove [Optional]
+   * @param array $options   Options for remove [Optional]
    * @return bool|int
    * @throws MongoException on error
    */
-  public function remove_safe($criteria, $options = array())
+  public function remove_safe(array $criteria = array(), array $options = array())
   {
     $options = array_merge(array('safe' => TRUE, 'justOne' => FALSE), $options);
     $result = $this->remove($criteria, $options);

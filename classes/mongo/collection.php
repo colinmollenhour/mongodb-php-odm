@@ -719,9 +719,9 @@ class Mongo_Collection implements Iterator, Countable
    * @return bool|int|MongoId
    * @throws MongoException on error
    */
-  public function update_safe($criteria, $update, $options = array(), $upsert = false, $multi = false)
+  public function update_safe($criteria, $update, $options = array())
   {
-    $options = array_merge(array('safe' => TRUE, 'multiple' => $multi, 'upsert' => $upsert), $options);
+    $options = array_merge(array('safe' => TRUE, 'multiple' => FALSE, 'upsert' => FALSE), $options);
     $result = $this->update($criteria, $update, $options);
 
     // In case 'safe' was overridden and disabled, just return the result

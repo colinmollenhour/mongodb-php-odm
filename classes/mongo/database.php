@@ -329,7 +329,7 @@ class Mongo_Database {
     $result = $this->execute($code, $args);
     if( empty($result['ok']) )
     {
-      throw new MongoException($result['errmsg'], $result['errno']);
+      throw new MongoException($result['errmsg'], $result['code']);
     }
     return $result['retval'];
   }

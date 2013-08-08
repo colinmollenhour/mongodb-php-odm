@@ -531,8 +531,8 @@ abstract class Mongo_Document {
       if (isset($this->_references[$name]['getter']))
       {
         if ($this->_references[$name]['getter'] == null) throw new \Exception("'$name' is write only!");
-        else if (is_string($this->_references[$name]['getter'])) return call_user_func([$this, $this->_references[$name]['getter']], $name);
-        else return call_user_func([$this, $this->_references[$name]['getter']], $this, $name);
+        else if (is_string($this->_references[$name]['getter'])) return call_user_func(array($this, $this->_references[$name]['getter']), $name);
+        else return call_user_func(array($this, $this->_references[$name]['getter']), $this, $name);
       }
       if( ! isset($this->_related_objects[$name]))
       {
@@ -608,8 +608,8 @@ abstract class Mongo_Document {
       if (isset($this->_references[$name]['setter']))
       {
         if ($this->_references[$name]['setter'] == null) throw new \Exception("'$name' is read only!");
-        else if (is_string($this->_references[$name]['setter'])) return call_user_func([$this, $this->_references[$name]['setter']], $value, $name);
-        else return call_user_func([$this, $this->_references[$name]['setter']], $value, $this, $name);
+        else if (is_string($this->_references[$name]['setter'])) return call_user_func(array($this, $this->_references[$name]['setter']), $value, $name);
+        else return call_user_func(array($this, $this->_references[$name]['setter']), $value, $this, $name);
       }
       if( ! $value instanceof Mongo_Document)
       {

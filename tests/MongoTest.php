@@ -176,7 +176,64 @@ class MongoTest extends PHPUnit_Framework_TestCase {
     $this->assertTrue($doc->loaded(), 'document not found');
   }
 
+  /** @dataProvider emulationProvider  */
+  public function testEmulation($data, $expected, $call)
+  {
+    foreach ([false, true] as $modelEmulation)
+    {
+      foreach ([null, false, true] as $functionEmulation)
+      {
+        $emulation = $functionEmulation === null ? $modelEmulation : $functionEmulation;
 
+        unset($data['_id']);
+        $doc = new Model_Test_Document();
+        $doc->set_emulation($modelEmulation);
+        $doc->load_values($data);
+        $doc->save();
+
+        $expected['_id'] = $doc->id;
+        $data['_id'] = $doc->id;
+
+        $args = $call;
+        $method = array_shift($args);
+        if ($functionEmulation !== null) $args[] = $functionEmulation;
+        call_user_func_array([$doc, $method], $args);
+        if ($emulation)
+        {
+          $this->assertEquals($expected, $doc->as_array(), "Should be emulated (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");
+        }
+        else
+        {
+          $this->assertEquals($data, $doc->as_array(), "Should be untouched (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");
+        }
+        $doc->save();
+        $doc->load();
+        $this->assertEquals($expected, $doc->as_array(), "After save & load (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");
+      }
+    }
+  }
+
+  public function emulationProvider()
+  {
+    return [
+//            [ ['num' => 1], ['num' => 1, 'foo' => 'bar'], ['set', 'foo', 'bar'] ], // without dot notation set() acts inconsistently
+        'set'       => [ ['num' => 1], ['num' => 1, 'foo' => ['bar' => 'baz']], ['set', 'foo.bar', 'baz']],
+        'setdot'    => [ ['num' => 1], ['num' => 1, 'foo' => ['bar']], ['set', 'foo.0', 'bar']],
+        'unset'     => [ ['num' => 1], [], ['_unset', 'num']],
+        'inc'       => [ ['num' => 1], ['num' => 3], ['inc', 'num', 2]],
+        'push'      => [ ['foo' => ['bar']], ['foo' => ['bar', 'baz']], ['push', 'foo', 'baz']],
+        'push2'     => [ ['foo' => ['bar']], ['foo' => ['bar', 'bar']], ['push', 'foo', 'bar']],
+        'push3'     => [ ['a' => 'b'], ['a'   => 'b', 'foo' => ['baz']], ['push', 'foo', 'baz']],
+        'pushAll'   => [ ['a' => 'b'], ['a'   => 'b', 'foo' => ['bar', 'baz']], ['pushAll', 'foo', ['bar', 'baz']]],
+        'pull'      => [ ['foo' => ['bar', 'baz']], ['foo' => ['bar']], ['pull', 'foo', 'baz']],
+        'pullAll'   => [ ['foo' => ['bar', 'baz']], ['foo' => []], ['pullAll', 'foo', ['bar', 'baz']]],
+        'pop'       => [ ['foo' => ['bar', 'baz']], ['foo' => ['bar']], ['pop', 'foo', true]],
+        'shift'     => [ ['foo' => ['bar', 'baz']], ['foo' => ['baz']], ['pop', 'foo', false]],
+        'shift2'    => [ ['foo' => ['bar', 'baz']], ['foo' => ['baz']], ['shift', 'foo']],
+        'addToSet'  => [ ['foo' => []], ['foo' => ['bar']], ['addToSet', 'foo', 'bar']],
+        'addToSet2' => [ ['foo' => ['bar']], ['foo' => ['bar']], ['addToSet', 'foo', 'bar']],
+    ];
+  }
 
 }
 

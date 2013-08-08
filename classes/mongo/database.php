@@ -79,7 +79,9 @@ class Mongo_Database {
    *  @static  array */
   protected static $instances = array();
 
-  public static $configs = array();
+  /** Array of configuration sets
+   * @var array */
+  protected $configs = array();
 
   /**
    * @var   string     default db to use
@@ -112,9 +114,9 @@ class Mongo_Database {
     {
       if ($config === NULL)
       {
-        if (isset(self::$configs[$name]))
+        if (isset($this->configs[$name]))
         {
-          $config = self::$configs[$name];
+          $config = $this->configs[$name];
           if ($config instanceof Closure) $config = $config($name);
         } else if (class_exists('Kohana'))
         {
@@ -138,7 +140,7 @@ class Mongo_Database {
   protected $_connected = FALSE;
 
   /** The Mongo server connection
-   *  @var  Mongo */
+   *  @var  MongoClient|Mongo */
   protected $_connection;
 
   /** The database instance for the database name chosen by the config
@@ -193,6 +195,9 @@ class Mongo_Database {
 
     // Save profiling option in a public variable
     $this->profiling = (isset($config['profiling']) && $config['profiling']);
+
+    // Store config
+    $this->configs[$name] = $config;
 
     // Store the database instance
     self::$instances[$name] = $this;
@@ -324,7 +329,7 @@ class Mongo_Database {
     $result = $this->execute($code, $args);
     if( empty($result['ok']) )
     {
-      throw new MongoException($result['errmsg'], $result['errno']);
+      throw new MongoException($result['errmsg'], $result['code']);
     }
     return $result['retval'];
   }
@@ -461,11 +466,36 @@ class Mongo_Database {
     call_user_func($this->_stop_callback, $token);
   }
 
-  
-  /** @return Mongo */
+
+  /**
+   * Get the MongoClient|Mongo instance directly
+   * @return MongoClient|Mongo
+   */
   public function connection()
   {
     return $this->_connection;
+  }
+
+  /**
+   * Get the currently referenced database
+   * @return  string
+   */
+  public function getName()
+  {
+    return $this->execute_safe('db.getName()');
+  }
+
+
+  /**
+   * Checks if the given $collection exists in the currently referenced database
+   * @param   string  $collection  Collection name
+   * @return  bool
+   */
+  public function exists($collection)
+  {
+    $result = $this->execute_safe("db.{$collection}.exists()");
+
+    return ( ! is_null($result));
   }
 
 }

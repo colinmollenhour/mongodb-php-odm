@@ -209,6 +209,14 @@ abstract class Mongo_Document implements ArrayAccess {
    * );
    * </pre>
    *
+   * You can also specify getter and setter functions:
+   * 'getter' - NULL will make the value write-only, 
+   *            string will call $this->{$getter}($name), 
+   *            callable will be called as $getter($this, $name)
+   * 'setter' - NULL will make the value read-only, 
+   *            string will call $this->{$setter}($value), 
+   *            callable will be called as $setter($value, $this, $name)
+   * 
    *  @var  array */
   protected $_references = array();
 
@@ -577,6 +585,12 @@ abstract class Mongo_Document implements ArrayAccess {
     // Auto-loading for special references
     if(array_key_exists($name, $this->_references))
     {
+      if (isset($this->_references[$name]['getter']))
+      {
+        if ($this->_references[$name]['getter'] == null) throw new \Exception("'$name' is write only!");
+        else if (is_string($this->_references[$name]['getter'])) return call_user_func(array($this, $this->_references[$name]['getter']), $name);
+        else return call_user_func(array($this, $this->_references[$name]['getter']), $this, $name);
+      }
       if( ! isset($this->_related_objects[$name]))
       {
         $model = isset($this->_references[$name]['model']) ? $this->_references[$name]['model'] : $name;
@@ -658,6 +672,12 @@ abstract class Mongo_Document implements ArrayAccess {
     // Automatically save references to other Mongo_Document objects
     if(array_key_exists($name, $this->_references))
     {
+      if (isset($this->_references[$name]['setter']))
+      {
+        if ($this->_references[$name]['setter'] == null) throw new \Exception("'$name' is read only!");
+        else if (is_string($this->_references[$name]['setter'])) return call_user_func(array($this, $this->_references[$name]['setter']), $value, $name);
+        else return call_user_func(array($this, $this->_references[$name]['setter']), $value, $this, $name);
+      }
       if( ! $value instanceof Mongo_Document)
       {
         throw new Exception('Cannot set reference to object that is not a Mongo_Document');

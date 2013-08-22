@@ -51,3 +51,18 @@ This class objectifies a document (or row) in the database. Extend the base clas
 
 See the wiki for more detail.
 
+h2. More Information
+
+    @copyright  Copyright (c) 2013 Colin Mollenhour (http://colin.mollenhour.com)
+    This project is licensed under the "New BSD" license (see LICENSE.txt).
+
+h4. Contributors
+
+* @panrafal
+* @sergeyklay
+* @Xobb
+* @sebicas
+* @kanema
+* @semalead
+* @bbedwell
+* @kohenkatz

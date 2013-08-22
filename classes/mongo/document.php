@@ -1,13 +1,14 @@
 <?php
 /**
- * This class objectifies a Mongo document and can be used with one of the following design patterns:
+ * This class objectifies a MongoDB document and can be used with one of the following design patterns:
  *
- * 1. Table Data Gateway pattern
+ * 1. Table Data Gateway pattern:
  * <code>
  * class Model_Post extends Mongo_Document {
  *   protected $name = 'posts';
  *   // All model-related code here
  * }
+ *
  * $post = Mongo_Document::factory('post', $post_id);
  * </code>
  *
@@ -17,9 +18,11 @@
  *   protected $name = 'posts';
  *   // Collection-related code here
  * }
+ *
  * class Model_Post extends Mongo_Document {
  *   // Document-related code here
  * }
+ *
  * $post = Mongo_Document::factory('post', $post_id);
  * </code>
  *
@@ -28,8 +31,9 @@
  *
  * <code>
  *   class Model_Document extends Mongo_Document {
- *     public $name = 'test';
+ *     protected $name = 'test';
  *   }
+ *
  *   $document = new Model_Document(); // or Mongo_Document::factory('document');
  *   $document->name = 'Mongo';
  *   $document->type = 'db';
@@ -73,17 +77,23 @@
  * Atomic operations and updates are not executed until save() is called and operations are chainable. Example:
  *
  * <code>
- *   $doc->inc('uses.boing');
- *       ->push('used',array('type' => 'sound', 'desc' => 'boing'));
- *   $doc->inc('uses.bonk');
- *       ->push('used',array('type' => 'sound', 'desc' => 'bonk'));
+ *   $doc->inc('uses.boing')
+ *       ->push('used', array('type' => 'sound', 'desc' => 'boing'));
+ *
+ *   $doc->inc('uses.bonk')
+ *       ->push('used', array('type' => 'sound', 'desc' => 'bonk'))
  *       ->save();
+ *
  *   // db.test.update(
- *   //   {"_id":"one"},
+ *   //   {"_id": "some-id-here"},
  *   //   {"$inc":
- *   //     {"uses.boing":1,"uses.bonk":1},
- *   //    "$pushAll":
- *   //     {"used":[{"type":"sound","desc":"boing"},{"type":"sound","desc":"bonk"}]}
+ *   //     {"uses.boing": 1, "uses.bonk": 1},
+ *   //     "$pushAll":
+ *   //       {"used": [
+ *   //                  {"type": "sound", "desc": "boing"},
+ *   //                  {"type": "sound", "desc": "bonk"}
+ *   //                ]
+ *   //       }
  *   //   }
  *   // );
  * </code>
@@ -98,14 +108,13 @@
  * Documents are reloaded when accessing a property that was modified with an operator and then saved:
  *
  * <code>
- *   in_array($doc->roles,'admin');
- *   // TRUE
- *   $doc->pull('roles','admin');
- *   in_array($doc->roles,'admin');
- *   // TRUE
+ *   in_array($doc->roles, 'admin'); // TRUE
+ *
+ *   $doc->pull('roles', 'admin');
+ *   in_array($doc->roles, 'admin'); // TRUE
+ *
  *   $doc->save();
- *   in_array($doc->roles,'admin');
- *   // FALSE
+ *   in_array($doc->roles, 'admin'); // FALSE
  * </code>
  *
  * Documents can have references to other documents which will be loaded lazily and saved automatically.
@@ -120,19 +129,25 @@
  *     protected $name = 'users';
  *   }
  *
- *   $user = Mongo_Document::factory('user')->set('id','colin')->set('email','colin@mollenhour.com');
+ *   $user = Mongo_Document::factory('user')
+ *                         ->set('id',    'colin')
+ *                         ->set('email', 'colin@mollenhour.com');
  *   $post = Mongo_Document::factory('post');
- *   $post->user = $user;
- *   $post->title = 'MongoDb';
+ *
+ *   $post->user  = $user;
+ *   $post->title = 'MongoDB';
  *   $post->save()
- *   // db.users.save({"_id":"colin","email":"colin@mollenhour.com"})
- *   // db.posts.save({"_id":Object,"_user":"colin","title":"MongoDb"})
+ *   // db.users.save({"_id": "colin", "email": "colin@mollenhour.com"})
+ *   // db.posts.save({"_id": Object, "_user": "colin", "title":"MongoDb"})
  *
  *   $post = new Model_Post($id);
+ *
  *   $post->_user;
  *   // "colin" - the post was loaded lazily.
+ *
  *   $post->user->id;
  *   // "colin" - the user object was created lazily but not loaded.
+ *
  *   $post->user->email;
  *   // "colin@mollenhour.com" - now the user document was loaded as well.
  * </code>
@@ -148,7 +163,7 @@ abstract class Mongo_Document implements ArrayAccess {
   const SAVE_UPSERT = 'upsert';
 
   public static $models = array ();
-  
+
   /**
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
@@ -163,7 +178,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $class = self::$models[$name];
     }
-    else if (strpos($name, '\\') !== false)
+    else if (strpos($name, '\\') !== FALSE)
     {
       $class = $name;
     }
@@ -178,21 +193,21 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
    *
-   *  @var  string */
+   * @var  string */
   protected $name;
 
   /** The database configuration name (passed to Mongo_Database::instance() )
    *
    *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
    *
-   *  @var  string */
+   * @var  string */
   protected $db;
 
   /** Whether or not this collection is a gridFS collection
    *
    *  If using a corresponding Mongo_Collection subclass, set this only in the Mongo_Collection subclass.
    *
-   *  @var  boolean */
+   * @var  boolean */
   protected $gridFS = FALSE;
 
   /** Definition of references existing in this document.
@@ -201,7 +216,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * <pre>
    * Example Document:
-   *  {_id:1,user_id:2,_token:3}
+   *  {_id: 1, user_id: 2, _token: 3}
    *
    * protected $_references = array(
    *  'user' => array('model' => 'user', 'field' => 'user_id'),
@@ -210,14 +225,14 @@ abstract class Mongo_Document implements ArrayAccess {
    * </pre>
    *
    * You can also specify getter and setter functions:
-   * 'getter' - NULL will make the value write-only, 
-   *            string will call $this->{$getter}($name), 
+   * 'getter' - NULL will make the value write-only,
+   *            string will call $this->{$getter}($name),
    *            callable will be called as $getter($this, $name)
-   * 'setter' - NULL will make the value read-only, 
-   *            string will call $this->{$setter}($value), 
+   * 'setter' - NULL will make the value read-only,
+   *            string will call $this->{$setter}($value),
    *            callable will be called as $setter($value, $this, $name)
-   * 
-   *  @var  array */
+   *
+   * @var  array */
   protected $_references = array();
 
   /** Definition of predefined searches for use with __call. This instantiates a collection for the target model
@@ -234,54 +249,54 @@ abstract class Mongo_Document implements ArrayAccess {
 
   /** Field name aliases. '_id' is automatically aliased to 'id'.
    * E.g.: {created_at: ca}
-   *  @var  array */
+   * @var  array */
   protected $_aliases = array();
 
-  /** If set to TRUE, operator functions (set, inc, push etc.) will emulate database functions for eventual consistency. 
+  /** If set to TRUE, operator functions (set, inc, push etc.) will emulate database functions for eventual consistency.
    * For example this will print '2':
    * <code>
    * $doc = new Mongo_Document();
-   * $doc->_emulate = true;
+   * $doc->_emulate = TRUE;
    * $doc->number = 1;
    * $doc->inc('number');
    * echo $doc->number;
    * </code>
-   * 
+   *
    * If set to FALSE, the field will be marked as dirty, and the new value will only be available after reload.
    * This will print '1':
    * <code>
    * $doc = new Mongo_Document();
-   * $doc->_emulate = false;
+   * $doc->_emulate = FALSE;
    * $doc->number = 1;
    * $doc->inc('number');
    * echo $doc->number;
    * </code>
-   * 
-   *  */
-  protected $_emulate = false;
-  
+   *
+   * @var boolean */
+  protected $_emulate = FALSE;
+
   /** Designated place for non-persistent data storage (will not be saved to the database or after sleep)
-   *  @var  array */
+   * @var  array */
   public $__data = array();
 
   /** Internal storage of object data
-   *  @var  array */
+   * @var  array */
   protected $_object = array();
 
   /** Keep track of fields changed using __set or load_values
-   *  @var  array */
+   * @var  array */
   protected $_changed = array();
 
   /** Set of operations to perform on update/insert
-   *  @var  array */
+   * @var  array */
   protected $_operations = array();
 
   /** Keep track of data that is dirty (changed by an operation but not yet updated from database)
-   *  @var  array */
+   * @var  array */
   protected $_dirty = array();
 
   /** Storage for referenced objects
-   *  @var  array */
+   * @var  array */
   protected $_related_objects = array();
 
   /** Document loaded status:
@@ -291,18 +306,18 @@ abstract class Mongo_Document implements ArrayAccess {
    *   TRUE   succeeded
    * </pre>
    *
-   *  @var  boolean */
+   * @var  boolean */
   protected $_loaded = NULL;
 
   /** A cache of Mongo_Collection instances for performance
-   *  @static  array */
+   * @var  array */
   protected static $collections = array();
 
   /**
    * Instantiate a new Document object. If an id or other data is passed then it will be assumed that the
-   * document exists in the database and updates will be performaed without loading the document first.
+   * document exists in the database and updates will be performed without loading the document first.
    *
-   * @param   string  $id _id of the document to operate on or criteria used to load
+   * @param   string|array  $id _id of the document to operate on or criteria used to load
    * @return  Mongo_Document
    */
   public function __construct($id = NULL)
@@ -359,7 +374,7 @@ abstract class Mongo_Document implements ArrayAccess {
   {
     if($name == 'id' || $name == '_id') return '_id';
 
-    if( ! $dot_allowed || ! strpos($name,'.'))
+    if( ! $dot_allowed || ! strpos($name, '.'))
     {
       return (isset($this->_aliases[$name])
         ? $this->_aliases[$name]
@@ -385,22 +400,22 @@ abstract class Mongo_Document implements ArrayAccess {
   /**
    * Checks if a field is set
    *
-   * @param   string   $name
+   * @param   string   $name  Field name
    * @return  boolean  field is set
    */
   public function __isset($name)
   {
     $name = $this->get_field_name($name, FALSE);
-    if (isset($this->_object[$name])) return true;
+    if (isset($this->_object[$name])) return TRUE;
     // check for dirties...
-    if ($this->get($name)) return true;
+    if ($this->get($name)) return TRUE;
     return isset($this->_object[$name]);
   }
 
   /**
    * Unset a field
    *
-   * @param   string  $name
+   * @param   string  $name  Field name
    * @return  void
    */
   public function __unset($name)
@@ -533,7 +548,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param  string $name
    * @param  array  $arguments
    * @throws Exception
-   * @return Mongo_Collection
+   * @return Mongo_Collection|Mongo_Document
    */
   public function __call($name, $arguments)
   {
@@ -577,6 +592,7 @@ abstract class Mongo_Document implements ArrayAccess {
    *
    * @param   string  $name field name
    * @return  mixed
+   * @throws  \Exception
    */
   public function __get($name)
   {
@@ -587,7 +603,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       if (isset($this->_references[$name]['getter']))
       {
-        if ($this->_references[$name]['getter'] == null) throw new \Exception("'$name' is write only!");
+        if ($this->_references[$name]['getter'] == null) throw new \Exception('$name is write only!');
         else if (is_string($this->_references[$name]['getter'])) return call_user_func(array($this, $this->_references[$name]['getter']), $name);
         else return call_user_func(array($this, $this->_references[$name]['getter']), $this, $name);
       }
@@ -645,7 +661,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       return $this->load();
     }
-    return false;
+    return FALSE;
   }
 
   /**
@@ -708,9 +724,9 @@ abstract class Mongo_Document implements ArrayAccess {
    */
   protected function _set_dirty($name)
   {
-    if($pos = strpos($name,'.'))
+    if($pos = strpos($name, '.'))
     {
-      $name = substr($name,0,$pos);
+      $name = substr($name, 0, $pos);
     }
     $this->_dirty[$name] = TRUE;
     return $this;
@@ -726,14 +742,14 @@ abstract class Mongo_Document implements ArrayAccess {
       return $this->__get($name);
     }
     $this->load_if_needed($dotPos ? substr($name, 0, $dotPos) : $name);
-    $ref = $this->get_field_reference($name, false, $default);
+    $ref = $this->get_field_reference($name, FALSE, $default);
     return $ref;
   }
 
   /** Get the raw value for a key (using dot notation), without lazy loading, aliasing and references  */
   public function get_raw($name, $default = null)
   {
-    $ref = $this->get_field_reference($name, false, $default);
+    $ref = $this->get_field_reference($name, FALSE, $default);
     return $ref;
   }
 
@@ -754,13 +770,13 @@ abstract class Mongo_Document implements ArrayAccess {
     }
     $name = $this->get_field_name($name);
     $this->_operations['$set'][$name] = $value;
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true);
+      $ref = & $this->get_field_reference($name, TRUE);
       $ref = $value;
       return $this;
     }
@@ -773,14 +789,15 @@ abstract class Mongo_Document implements ArrayAccess {
    *       is reserved in PHP. ( Requires PHP > 5.2.3. - http://php.net/manual/en/reserved.keywords.php )
    *
    * @param   string  $name The key of the data to update (use dot notation for embedded objects)
-   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
+   * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload.
+   * @see $_emulate
    * @return Mongo_Document
    */
   public function _unset($name, $emulate = null)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$unset'][$name] = 1;
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
@@ -810,13 +827,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$inc'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, 0);
+      $ref = & $this->get_field_reference($name, TRUE, 0);
       $ref += $value;
       return $this;
     }
@@ -848,13 +865,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$push'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, array());
+      $ref = & $this->get_field_reference($name, TRUE, array());
       if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
       array_push($ref, $value);
       return $this;
@@ -880,13 +897,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pushAll'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, array());
+      $ref = & $this->get_field_reference($name, TRUE, array());
       if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
       foreach ($value as $v) array_push($ref, $v);
       return $this;
@@ -901,17 +918,17 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   boolean $emulate TRUE will emulate the database function for eventual consistency, FALSE will not change the object until save & reload. @see $_emulate
    * @return  Mongo_Document
    */
-  public function pop($name, $last = true, $emulate = null)
+  public function pop($name, $last = TRUE, $emulate = null)
   {
     $name = $this->get_field_name($name);
     $this->_operations['$pop'][$name] = $last ? 1 : -1;
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, null);
+      $ref = & $this->get_field_reference($name, TRUE, null);
       if ($ref === null) return $this;
       if (!is_array($ref)) throw new MongoException("Value '$name' cannot be used as an array");
       if ($last) array_pop($ref);
@@ -929,7 +946,7 @@ abstract class Mongo_Document implements ArrayAccess {
    */
   public function shift($name, $emulate = null)
   {
-    return $this->pop($name, false, $emulate);
+    return $this->pop($name, FALSE, $emulate);
   }
 
   /**
@@ -958,13 +975,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pull'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, null);
+      $ref = & $this->get_field_reference($name, TRUE, null);
       if ($ref === null) return $this;
       if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
       $ref = array_filter($ref, function($v) use ($value) {
@@ -993,18 +1010,18 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$pullAll'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true, null);
+      $ref = & $this->get_field_reference($name, TRUE, null);
       if ($ref === null) return $this;
       if (!is_array($ref)) throw new Exception("Value '$name' cannot be used as an array");
       $ref = array_filter($ref, function($v) use ($value) {
-                return !in_array($v, $value, true);
-              });
+        return !in_array($v, $value, TRUE);
+      });
       return $this;
     }
   }
@@ -1057,13 +1074,13 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       $this->_operations['$addToSet'][$name] = $value;
     }
-    if ($emulate === false || ($emulate === null && $this->_emulate === false))
+    if ($emulate === FALSE || ($emulate === null && $this->_emulate === FALSE))
     {
       return $this->_set_dirty($name);
     }
     else
     {
-      $ref = & $this->get_field_reference($name, true);
+      $ref = & $this->get_field_reference($name, TRUE);
       if ($ref === null)
       {
         $ref = array($value);
@@ -1071,7 +1088,7 @@ abstract class Mongo_Document implements ArrayAccess {
       else
       {
         if (!is_array($ref)) throw new Exception("Value '$name' cannot be set as an array"); // $ref = array($ref);
-        if (!in_array($value, $ref, true))
+        if (!in_array($value, $ref, TRUE))
         {
           array_push($ref, $value);
         }
@@ -1088,13 +1105,13 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param   boolean  $clean   values are clean (from database)?
    * @return  Mongo_Document
    */
-  public function load_values($values, $clean = FALSE)
+  public function load_values(array $values, $clean = FALSE)
   {
     if($clean === TRUE)
     {
       $this->before_load();
 
-      $this->_object = (array) $values;
+      $this->_object = $values;
       $this->_loaded = ! empty($this->_object);
 
       $this->after_load();
@@ -1143,7 +1160,7 @@ abstract class Mongo_Document implements ArrayAccess {
   }
 
   /**
-   * Return true if the document is loaded.
+   * Return TRUE if the document is loaded.
    *
    * @return  boolean
    */
@@ -1159,19 +1176,19 @@ abstract class Mongo_Document implements ArrayAccess {
   /**
    * Load the document from the database. The first parameter may be one of:
    *
-   *  a falsey value - the object data will be used to construct the query
+   *  a FALSEy value - the object data will be used to construct the query
    *  a JSON string - will be parsed and used for the query
    *  an non-array value - the query will be assumed to be for an _id of this value
    *  an array - the array will be used for the query
    *
-   * @param   array  $criteria  specify additional criteria
-   * @param   array  $fields    specify the fields to return
+   * @param   string|array  $criteria  specify additional criteria
+   * @param   array         $fields    specify the fields to return
    * @throws  MongoException
    * @return  boolean  TRUE if the load succeeded
    */
   public function load($criteria = array(), array $fields = array())
   {
-    $keepId = null;  
+    $keepId = null;
     // Use of json for querying is allowed
     if(is_string($criteria) && $criteria[0] == "{")
     {
@@ -1227,16 +1244,16 @@ abstract class Mongo_Document implements ArrayAccess {
     }
 
     $this->load_values($values, TRUE);
-    
+
     if (!$this->_loaded && $keepId) $this->id = $keepId; // restore the id previously set on this object...
-    
+
     return $this->_loaded;
   }
 
   /**
    * Save the document to the database. For newly created documents the _id will be retrieved.
    *
-   * @param   array|bool  $options  Insert options ('safe' defaults to true)
+   * @param   array|bool  $options  Insert options ('safe' defaults to TRUE)
    * @throws  MongoException
    * @return  Mongo_Document
    */
@@ -1429,7 +1446,7 @@ abstract class Mongo_Document implements ArrayAccess {
     $this->before_delete();
     $criteria = array('_id' => $this->_object['_id']);
 
-    if( ! $this->collection()->remove($criteria, array('justOne' => true)))
+    if( ! $this->collection()->remove($criteria, array('justOne' => TRUE)))
     {
       throw new MongoException('Failed to delete '.get_class($this));
     }
@@ -1467,7 +1484,7 @@ abstract class Mongo_Document implements ArrayAccess {
     return $merged;
   }
 
-   
+
   public function offsetExists($name)
   {
     return $this->__isset($name);
@@ -1480,21 +1497,20 @@ abstract class Mongo_Document implements ArrayAccess {
 
   public function offsetSet($name, $value)
   {
-    $this->set($name, $value, true);
+    $this->set($name, $value, TRUE);
   }
 
   public function offsetUnset($name)
   {
-    $this->_unset($name, true);
+    $this->_unset($name, TRUE);
   }
 
   /** Returns direct reference to a field, using dot notation.
-   * @param $arr Array with data
    * @param $name Dot notation name
    * @param $create TRUE to create a field if it's missing
    * @param $default Use default value to create missing fields, or return it if $create == FALSE
    *  */
-  public function &get_field_reference($name, $create = false, $default = null)
+  public function &get_field_reference($name, $create = FALSE, $default = null)
   {
     return self::get_named_reference($this->_object, $name, $create, $default);
   }
@@ -1505,7 +1521,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param $create TRUE to create a field if it's missing
    * @param $default Use default value to create missing fields, or return it if $create == FALSE
    *  */
-  public static function &get_named_reference(&$arr, $name, $create = false, $default = null)
+  public static function &get_named_reference(&$arr, $name, $create = FALSE, $default = null)
   {
     $keys = explode('.', $name);
     $data = & $arr;
@@ -1528,10 +1544,12 @@ abstract class Mongo_Document implements ArrayAccess {
     return $data;
   }
 
-  /** Unsets a field using dot notation
-   * @param $arr Array with data
-   * @param $name Dot notation name
-   *  */
+  /**
+   * Unsets a field using dot notation
+   *
+   * @param array  $arr  Array with data
+   * @param string $name Dot notation name
+   */
   public static function unset_named_reference(&$arr, $name)
   {
     $keys = explode('.', $name);

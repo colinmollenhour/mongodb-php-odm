@@ -603,7 +603,7 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       if (isset($this->_references[$name]['getter']))
       {
-        if ($this->_references[$name]['getter'] == null) throw new \Exception('$name is write only!');
+        if ($this->_references[$name]['getter'] == null) throw new \Exception("'$name' is write only!");
         else if (is_string($this->_references[$name]['getter'])) return call_user_func(array($this, $this->_references[$name]['getter']), $name);
         else return call_user_func(array($this, $this->_references[$name]['getter']), $this, $name);
       }

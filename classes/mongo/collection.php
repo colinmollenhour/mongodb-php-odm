@@ -14,6 +14,7 @@
  *   protected $name = 'posts';
  *   // All model-related code here
  * }
+ *
  * $posts = Mongo_Document::factory('post')->collection(TRUE);
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
  * </code>
@@ -24,9 +25,11 @@
  *   protected $name = 'posts';
  *   // Collection-related code here
  * }
+ *
  * class Model_Post extends Mongo_Document {
  *   // Document-related code here
  * }
+ *
  * $posts = Mongo_Document::factory('post')->collection(TRUE);
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
  * </code>
@@ -59,7 +62,10 @@
 class Mongo_Collection implements Iterator, Countable
 {
 
+  /** @type integer ASC Sort mode - ascending */
   const ASC = 1;
+
+  /** @type integer DESC Sort mode - descending */
   const DESC = -1;
 
   /**
@@ -75,43 +81,43 @@ class Mongo_Collection implements Iterator, Countable
   }
 
   /** The name of the collection within the database or the gridFS prefix if gridFS is TRUE
-   *  @var  string */
+   * @var  string */
   protected $name;
 
   /** The database configuration name (passed to Mongo_Database::instance() )
-   *  @var  string  */
+   * @var  string  */
   protected $db;
 
   /** Whether or not this collection is a gridFS collection
-   *  @var  bool */
+   * @var  bool */
   protected $gridFS = FALSE;
 
   /** The class name or instance of the corresponding document model or NULL if direct mode
-   *  @var  string */
+   * @var  mixed */
   protected $_model;
 
   /** The cursor instance in use while iterating a collection
-   *  @var  MongoCursor */
+   * @var  MongoCursor */
   protected $_cursor;
 
   /** The current query criteria (with field names translated)
-   *  @var  array */
+   * @var  array */
   protected $_query = array();
 
   /** The current query fields (a hash of 'field' => 1)
-   *  @var  array */
+   * @var  array */
   protected $_fields = array();
 
   /** The current query options
-   *  @var  array */
+   * @var  array */
   protected $_options = array();
 
   /** A cache of MongoCollection instances for performance
-   *  @static  array */
+   * @static  array */
   protected static $collections = array();
 
   /** A cache of Mongo_Document model instances for performance
-   *  @static  array */
+   * @static  array */
   protected static $models = array();
 
   /**
@@ -1169,7 +1175,7 @@ class Mongo_Collection implements Iterator, Countable
     return $array1;
   }
 
-  
+
   /** Wrapper for geoNear command
    * @param $near Position [lon, lat]
    * @param $query Additional query
@@ -1177,12 +1183,12 @@ class Mongo_Collection implements Iterator, Countable
    * @param $num Limit
    * @param $options Additional options like distanceMultiplier, spherical
    * @param $result Reference to variable, where original result object will be stored
-   * 
+   *
    * To find places $distanceKm kilometer around $pos use:
-   * 
-   * $collection->geoNear($pos, $query, $distanceKm / 6378.137, 10, 
+   *
+   * $collection->geoNear($pos, $query, $distanceKm / 6378.137, 10,
                     ['distanceMultiplier' => 6378.137, 'spherical' => true]);
-   * 
+   *
    * @return Array of Mongo_Document objects with distance set as $distanceKey (_distance by default)
    */
   public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance')

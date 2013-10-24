@@ -34,12 +34,10 @@
  * $posts->sort_desc('published')->limit(10)->as_array(); // array of Model_Post
  * </code>
  *
- * @method array aggregate(array $pipelines)
  * @method mixed batchInsert(array $a, array $options = array())
  * @method array createDBRef(array $a)
  * @method array deleteIndex(mixed $keys)
  * @method array deleteIndexes()
- * @method array distinct(string $key, array $query = array())
  * @method array drop()
  * @method bool ensureIndex(mixed $keys, array $options = array())
  * @method array getDBRef(array $ref)
@@ -202,6 +200,7 @@ class Mongo_Collection implements Iterator, Countable
     }
 
     trigger_error('Method not found by Mongo_Collection: '.$name);
+    return FALSE;
   }
 
   /**
@@ -498,6 +497,9 @@ class Mongo_Collection implements Iterator, Countable
     return isset($this->_options[$name]) ? $this->_options[$name] : NULL;
   }
 
+  /**
+   * @return array
+   */
   public function get_query()
   {
     return $this->_query;
@@ -1175,26 +1177,24 @@ class Mongo_Collection implements Iterator, Countable
     return $array1;
   }
 
-
-  /** Wrapper for geoNear command
-   * @param $near Position [lon, lat]
-   * @param $query Additional query
-   * @param $maxDistance Maximum distance
-   * @param $num Limit
-   * @param $options Additional options like distanceMultiplier, spherical
-   * @param $result Reference to variable, where original result object will be stored
-   *
+  /**
    * To find places $distanceKm kilometer around $pos use:
    *
-   * $collection->geoNear($pos, $query, $distanceKm / 6378.137, 10,
-                    ['distanceMultiplier' => 6378.137, 'spherical' => true]);
+   * $collection->geoNear($pos, $query, $distanceKm / 6378.137, 10, ['distanceMultiplier' => 6378.137, 'spherical' => true]);
    *
+   * @param array $near Position [lon, lat]
+   * @param null|array $query Additional query
+   * @param null|float $maxDistance Maximum distance
+   * @param null|float $num Limit
+   * @param array $options Additional options like distanceMultiplier, spherical
+   * @param null|array $result Reference to variable, where original result object will be stored
+   * @param string $distanceKey
    * @return Array of Mongo_Document objects with distance set as $distanceKey (_distance by default)
    */
   public function geoNear(array $near, $query = null, $maxDistance = null, $num = null, array $options = array(), &$result = null, $distanceKey = '_distance')
   {
     $options = array_merge(
-            ['geoNear' => $this->name, 'near' => $near]
+            array('geoNear' => $this->name, 'near' => $near)
             , $options);
     if ($query) $options['query'] = $query;
     if ($maxDistance) $options['maxDistance'] = $maxDistance;
@@ -1214,23 +1214,29 @@ class Mongo_Collection implements Iterator, Countable
   }
 
   /**
-   *    map : <mapfunction>,
-   reduce : <reducefunction>,
-   out : <see output options below>
-   [, query : <query filter object>]
-   [, sort : <sorts the input objects using this key. Useful for optimization, like sorting by the emit key for fewer reduces>]
-   [, limit : <number of objects to return from collection, not supported with sharding>]
-   [, keeptemp: <true|false>]
-   [, finalize : <finalizefunction>]
-   [, scope : <object where fields go into javascript global scope >]
-   [, jsMode : true]
-   [, verbose : true]
- }
-);
+   *   map : <mapfunction>,
+   *   reduce : <reducefunction>,
+   *   out : <see output options below>
+   *   [, query : <query filter object>]
+   *   [, sort : <sorts the input objects using this key. Useful for optimization, like sorting by the emit key for fewer reduces>]
+   *   [, limit : <number of objects to return from collection, not supported with sharding>]
+   *   [, keeptemp: <true|false>]
+   *   [, finalize : <finalizefunction>]
+   *   [, scope : <object where fields go into javascript global scope >]
+   *   [, jsMode : true]
+   *   [, verbose : true]
+   *
+   * @param string|MongoCode $map
+   * @param string|MongoCode $reduce
+   * @param bool $out
+   * @param bool $query
+   * @param bool $sort
+   * @param array $options
+   * @return array
    */
   public function mapReduce($map, $reduce, $out = true, $query = false, $sort = false, array $options = array())
   {
-    if ($out == true) $out = ['inline' => true];
+    if ($out == true) $out = array('inline' => true);
     $options = array_merge(array(
         'mapreduce' => $this->name,
         'map'       => $map,
@@ -1238,12 +1244,17 @@ class Mongo_Collection implements Iterator, Countable
         'out'       => $out,
         'query'     => $query,
         'sort'      => $sort,
-            ), $options);
+    ), $options);
     if (empty($options['query'])) unset($options['query']);
     if (empty($options['sort'])) unset($options['sort']);
     return $this->db()->command_safe($options);
   }
 
+  /**
+   * @param string $key
+   * @param array $query
+   * @return array
+   */
   public function distinct($key, $query = array())
   {
     return $this->db()->command_safe(array(
@@ -1253,6 +1264,10 @@ class Mongo_Collection implements Iterator, Countable
             ));
   }
 
+  /**
+   * @param array $pipeline
+   * @return array
+   */
   public function aggregate($pipeline)
   {
     return $this->db()->command_safe(array(
@@ -1261,14 +1276,20 @@ class Mongo_Collection implements Iterator, Countable
             ));
   }
 
-  /***/
+  /**
+   * @return bool
+   */
   public function isCapped()
   {
     $stats = $this->stats();
     return !empty($stats['capped']);
   }
 
-  /** The emptycapped command removes all documents from a capped collection. */
+  /**
+   * Removes all documents from a capped collection.
+   *
+   * @return array
+   */
   public function emptyCapped()
   {
     return $this->db()->command_safe(array(
@@ -1276,13 +1297,18 @@ class Mongo_Collection implements Iterator, Countable
             ));
   }
 
-  /** The collStats command returns a variety of storage statistics for a given collection. */
+  /**
+   * Returns a variety of storage statistics for a given collection.
+   *
+   * @param int $scale
+   * @return array
+   */
   public function stats($scale = 1024)
   {
     return $this->db()->command_safe(array(
-                'collStats' => $this->name,
-                'scale'     => $scale
-            ));
+        'collStats' => $this->name,
+        'scale'     => $scale
+    ));
   }
 
 }

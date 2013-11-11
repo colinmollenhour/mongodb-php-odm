@@ -1243,6 +1243,11 @@ abstract class Mongo_Document implements ArrayAccess {
       $this->clear();
     }
 
+    if( ! is_array($values))
+    {
+        throw new MongoException('Invalid search criteria.');
+    }
+
     $this->load_values($values, TRUE);
 
     if (!$this->_loaded && $keepId) $this->id = $keepId; // restore the id previously set on this object...

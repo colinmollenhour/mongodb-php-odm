@@ -79,9 +79,7 @@ class Mongo_Database {
    *  @static  array */
   protected static $instances = array();
 
-  /** Array of configuration sets
-   * @var array */
-  protected $configs = array();
+  public static $configs = array();
 
   /**
    * @var   string     default db to use
@@ -114,9 +112,9 @@ class Mongo_Database {
     {
       if ($config === NULL)
       {
-        if (isset($this->configs[$name]))
+        if (isset(self::$configs[$name]))
         {
-          $config = $this->configs[$name];
+          $config = self::$configs[$name];
           if ($config instanceof Closure) $config = $config($name);
         } else if (class_exists('Kohana'))
         {
@@ -195,9 +193,6 @@ class Mongo_Database {
 
     // Save profiling option in a public variable
     $this->profiling = (isset($config['profiling']) && $config['profiling']);
-
-    // Store config
-    $this->configs[$name] = $config;
 
     // Store the database instance
     self::$instances[$name] = $this;

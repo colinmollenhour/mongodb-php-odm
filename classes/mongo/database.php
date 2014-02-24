@@ -79,8 +79,6 @@ class Mongo_Database {
    *  @static  array */
   protected static $instances = array();
 
-  public static $configs = array();
-
   /**
    * @var   string     default db to use
    */
@@ -112,11 +110,7 @@ class Mongo_Database {
     {
       if ($config === NULL)
       {
-        if (isset(self::$configs[$name]))
-        {
-          $config = self::$configs[$name];
-          if ($config instanceof Closure) $config = $config($name);
-        } else if (class_exists('Kohana'))
+        if (class_exists('Kohana'))
         {
           // Load the configuration for this database
           $config = Kohana::$config->load('mongo')->$name;

@@ -176,6 +176,12 @@ class MongoTest extends PHPUnit_Framework_TestCase {
     $this->assertTrue($doc->loaded(), 'document not found');
   }
 
+  public function testNotfound()
+  {
+      $doc = new Model_Test_Document('nonexistent');
+      $this->assertFalse($doc->load(), 'Document loaded, but it should not');
+  }
+  
   /** @dataProvider emulationProvider  */
   public function testEmulation($data, $expected, $call)
   {

@@ -1,6 +1,5 @@
 <?php
 
-require_once __DIR__ . '/MongoTest.php';
 require_once __DIR__ . '/../classes/mongo/subdocument.php';
 
 class Mongo_Test_Subdocument extends Mongo_Subdocument {

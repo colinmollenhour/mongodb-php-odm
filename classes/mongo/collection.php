@@ -1049,7 +1049,7 @@ class Mongo_Collection implements Iterator, Countable
       return $data;
     }
     $model = clone $this->get_model();
-    return $model->load_values($data,TRUE);
+    return $model->load_values($data ? $data : array(),TRUE);
   }
 
   /**

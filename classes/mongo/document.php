@@ -1243,7 +1243,7 @@ abstract class Mongo_Document implements ArrayAccess {
       $this->clear();
     }
 
-    $this->load_values($values, TRUE);
+    $this->load_values($values ? $values : array(), TRUE);
 
     if (!$this->_loaded && $keepId) $this->id = $keepId; // restore the id previously set on this object...
 

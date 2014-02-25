@@ -108,13 +108,15 @@ class Mongo_Database {
     }
     if( $override || ! isset(self::$instances[$name]) )
     {
-      if ($config === NULL)
+      // Support better integration with Laravel
+      if ($config instanceof Closure)
       {
-        if (class_exists('Kohana'))
-        {
-          // Load the configuration for this database
-          $config = Kohana::$config->load('mongo')->$name;
-        }
+        $config = $config($name);
+      }
+      // Support better integration with Kohana
+      else if ($config === NULL && class_exists('Kohana'))
+      {
+        $config = Kohana::$config->load('mongo')->$name;
       }
 
       new self($name,$config);

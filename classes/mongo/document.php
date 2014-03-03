@@ -1253,7 +1253,7 @@ abstract class Mongo_Document implements ArrayAccess {
   /**
    * Save the document to the database. For newly created documents the _id will be retrieved.
    *
-   * @param   array|bool  $options  Insert options ('safe' defaults to TRUE)
+   * @param   array|bool  $options  Insert options
    * @throws  MongoException
    * @return  Mongo_Document
    */
@@ -1264,10 +1264,14 @@ abstract class Mongo_Document implements ArrayAccess {
 
     // Convert old bool argument to options array
     if (is_bool($options)) {
-      $options = array('safe' => $options);
+      $options = array('w' => 1);
     }
-    if ( ! isset($options['safe'])) {
-      $options['safe'] = TRUE;
+    if (isset($options['safe'])) {
+      $options['w'] = (int) $options['safe']; $options['j'] = (bool) $options['safe'];
+      unset($options['safe']);
+    }
+    if ( ! isset($options['w'])) {
+      $options['w'] = $this->db()->db()->w == 0 ? 1 : $this->db()->db()->w;
     }
 
     // Insert new record if no _id or _id was set by user
@@ -1290,7 +1294,7 @@ abstract class Mongo_Document implements ArrayAccess {
 
       $err = $this->collection()->insert($values, $options);
 
-      if( $options['safe'] && $err['err'] )
+      if($err['err'] && (! empty($options['w']) || ! empty($options['j'])))
       {
         throw new MongoException('Unable to insert '.get_class($this).': '.$err['err']);
       }

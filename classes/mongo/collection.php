@@ -729,11 +729,19 @@ class Mongo_Collection implements Iterator, Countable
    */
   public function update_safe($criteria, $update, $options = array())
   {
-    $options = array_merge(array('safe' => TRUE, 'multiple' => FALSE, 'upsert' => FALSE), $options);
+    $writeConcern = $this->db()->db()->w == 0 ? 1 : $this->db()->db()->w;
+    $options = array_merge(array('w' => $writeConcern, 'multiple' => FALSE, 'upsert' => FALSE), $options);
+
+    // Convert legacy safe option
+    if (isset($options['safe'])) {
+      $options['j'] = $options['safe'];
+      unset($options['safe']);
+    }
+
     $result = $this->update($criteria, $update, $options);
 
-    // In case 'safe' was overridden and disabled, just return the result
-    if( ! $options['safe']) {
+    // For unacknowledged writes, just return the result
+    if($options['w'] == 0 && empty($options['j'])) {
       return $result;
     }
 
@@ -759,7 +767,7 @@ class Mongo_Collection implements Iterator, Countable
   /**
    * Remove, throw exception on errors.
    *
-   * Returns number of documents removed if "safe", otherwise just if the operation was successfully sent.
+   * Returns number of documents removed if acknowledged, otherwise just if the operation was successfully sent.
    *
    * [!!] Note: You cannot use this method with a capped collection.
    *
@@ -770,11 +778,12 @@ class Mongo_Collection implements Iterator, Countable
    */
   public function remove_safe(array $criteria = array(), array $options = array())
   {
-    $options = array_merge(array('safe' => TRUE, 'justOne' => FALSE), $options);
+    $writeConcern = $this->db()->db()->w == 0 ? 1 : $this->db()->db()->w;
+    $options = array_merge(array('w' => $writeConcern, 'justOne' => FALSE), $options);
     $result = $this->remove($criteria, $options);
 
-    // In case 'safe' was overridden and disabled, just return the result
-    if( ! $options['safe']) {
+    // For unacknowledged writes, just return the result
+    if($options['w'] == 0 && empty($options['j'])) {
       return $result;
     }
 

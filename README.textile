@@ -19,11 +19,11 @@ h2. Design Principles
 h2. Basic Idea
 
 The basic idea is to boil the usage of the Mongo PHP library down to three classes:
-* [[Mongo_Database]]
-* [[Mongo_Collection]]
-* [[Mongo_Document]]
+* Mongo_Database
+* Mongo_Collection
+* Mongo_Document
 
-h3. [[Mongo_Database]]
+h3. Mongo_Database
 
 This class encapsulates the functionality of the Mongo connection and the MongoDb class into one since in most cases an application will interface with only one database. Interfacing with more than one database is still possible, but they will not share a single connection. Features afforded by this class:
 * Configurations are described with names such as 'default'. Kohana loads this configuration in the typical Kohana fashion, other frameworks can simply specify it as an argument to @Mongo_Database::instance('default',array(...))@ to set the default configuration.
@@ -31,7 +31,7 @@ This class encapsulates the functionality of the Mongo connection and the MongoD
 * When used with Kohana, all important database operations can easily have profiling enabled. Profiling output mimics Mongo shell syntax for easy copy/paste debugging in the shell.
 * Lazy database connections.
 
-h3. [[Mongo_Collection]]
+h3. Mongo_Collection
 
 This class accomplishes the following:
 * Allows query results to be accessed as an iterator of models rather than arrays when used in conjunction with Mongo_Document.
@@ -40,7 +40,7 @@ This class accomplishes the following:
 * When used with Kohana, all database requests can easily be profiled.
 * Debugging can be made easier by using the @__toString()@ method to get a string representing the full query, again mimicking the syntax of the MongoDb shell.
 
-h3. [[Mongo_Document]]
+h3. Mongo_Document
 
 This class objectifies a document (or row) in the database. Extend the base class for each of your data models, typically one per collection and enjoy some very simple CRUD operations with niceties like:
 * @before_*@ and @after_*@ methods for you to implement for transparently added functionality such as updating timestamps, validation, etc..

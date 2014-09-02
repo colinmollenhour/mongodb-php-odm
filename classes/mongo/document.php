@@ -168,8 +168,8 @@ abstract class Mongo_Document implements ArrayAccess {
    * Instantiate an object conforming to Mongo_Document conventions.
    * The document is not loaded until load() is called.
    *
-   * @param   string  $name
-   * @param   mixed   $load
+   * @param   string  $name Model name
+   * @param   mixed   $load _id of the document to operate on or criteria used to load [Optional]
    * @return  Mongo_Document
    */
   public static function factory($name, $load = NULL)
@@ -317,14 +317,14 @@ abstract class Mongo_Document implements ArrayAccess {
    * Instantiate a new Document object. If an id or other data is passed then it will be assumed that the
    * document exists in the database and updates will be performed without loading the document first.
    *
-   * @param   string|array  $id _id of the document to operate on or criteria used to load
+   * @param   mixed  $id _id of the document to operate on or criteria used to load
    * @return  Mongo_Document
    */
   public function __construct($id = NULL)
   {
-    if($id !== NULL)
+    if(!empty($id))
     {
-      if(is_array($id))
+      if(is_array($id) || $id  instanceof Traversable)
       {
         foreach($id as $key => $value)
         {
@@ -341,7 +341,7 @@ abstract class Mongo_Document implements ArrayAccess {
   /**
    * Override to cast values when they are set with untrusted data
    *
-   * @param  string  $field  The field name being set
+   * @param  mixed  $field  The field name being set
    * @param  mixed  $value  The value being set
    * @return mixed|\MongoId|string
    */
@@ -351,7 +351,9 @@ abstract class Mongo_Document implements ArrayAccess {
     {
       case '_id':
         // Cast _id strings to MongoIds if they convert back and forth without changing
-        if( is_string($value) && strlen($value) == 24)
+        if ($value instanceof MongoId)
+          return $value;
+        if ((is_string($value) || ctype_xdigit($value) || (is_object($value) && method_exists($value, '__toString'))) && strlen($value) == 24)
         {
           $id = new MongoId($value);
           if( (string) $id == $value)

@@ -1,5 +1,8 @@
 <?php
 
+require_once __DIR__ . '/MongoTest.php';
+require_once __DIR__ . '/../classes/mongo/database.php';
+require_once __DIR__ . '/../classes/mongo/collection.php';
 require_once __DIR__ . '/../classes/mongo/subdocument.php';
 
 class Mongo_Test_Subdocument extends Mongo_Subdocument {
@@ -31,7 +34,7 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
 
   protected function tearDown()
   {
-    
+
   }
 
   public function testCreate()

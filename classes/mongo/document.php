@@ -1512,9 +1512,10 @@ abstract class Mongo_Document implements ArrayAccess {
   }
 
   /** Returns direct reference to a field, using dot notation.
-   * @param $name Dot notation name
-   * @param $create TRUE to create a field if it's missing
-   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   * @param string $name Dot notation name
+   * @param bool $create TRUE to create a field if it's missing
+   * @param mixed $default Use default value to create missing fields, or return it if $create == FALSE
+   * @return mixed
    *  */
   public function &get_field_reference($name, $create = FALSE, $default = null)
   {
@@ -1522,10 +1523,11 @@ abstract class Mongo_Document implements ArrayAccess {
   }
 
   /** Returns direct reference to a field, using dot notation.
-   * @param $arr Array with data
-   * @param $name Dot notation name
-   * @param $create TRUE to create a field if it's missing
-   * @param $default Use default value to create missing fields, or return it if $create == FALSE
+   * @param array $arr Array with data
+   * @param string $name Dot notation name
+   * @param bool $create TRUE to create a field if it's missing
+   * @param mixed $default Use default value to create missing fields, or return it if $create == FALSE
+   * @return mixed
    *  */
   public static function &get_named_reference(&$arr, $name, $create = FALSE, $default = null)
   {

@@ -1,13 +1,13 @@
 <?php
 
 /**
- * Class for easy handling of subdocuments in Mongo_Document. 
- * 
+ * Class for easy handling of subdocuments in Mongo_Document.
+ *
  * It allows to create simple models for subdocuments. All field operations like set, inc, push etc. are
  * delegated to the main document.
- * 
+ *
  * To make it fast, reads are done though a cached reference.
- * 
+ *
  * This code will store a document like this: ``` {some:'thing', sub : {foo : 'bar'}} ```
  * <code>
  * $doc = new Mongo_Document();
@@ -16,8 +16,8 @@
  * $sub->foo = 'bar';
  * $doc->save();
  * </code>
- * 
- * You can also read arrays. 
+ *
+ * You can also read arrays.
  * Let's read a ``` { comments : [{title:'nice', views:100}, {title:'wow', views:0}] } ```
  * and increment the view count of every comment...
  * <code>
@@ -27,23 +27,22 @@
  * }
  * $doc->save();
  * </code>
- * 
+ *
  * To act more like Mongo_Document, set and unset will by default emulate database operations immediately.
- * 
+ *
  * It is possible to operate on non-array values. If you omit $name parameter, the functions will operate
  * directly on that field. For example, you can use an integer as a subdocument and invoke
  * ```$sub->inc();``` or ```$sub->bit(false, ['$and' => 1)``` on it.
- * 
- * @method self addToSet($name, $value, $emulate = null) 
- * @method self bit($name, $op, $emulate = null) 
- * @method self inc($name, $value = 1, $emulate = null) 
- * @method self push($name, $value, $emulate = null) 
- * @method self pushAll($name, $value, $emulate = null) 
- * @method self pull($name, $value, $emulate = null) 
- * @method self pullAll($name, $values, $emulate = null) 
- * @method self shift($name, $emulate = null) 
- * @method self pop($name, $first, $emulate = null) 
- * @method self _unset($name, $emulate = null) 
+ *
+ * @method addToSet($name, $value, $emulate = null)
+ * @method bit($name, $op, $emulate = null)
+ * @method inc($name, $value = 1, $emulate = null)
+ * @method push($name, $value, $emulate = null)
+ * @method pushAll($name, $value, $emulate = null)
+ * @method pull($name, $value, $emulate = null)
+ * @method pullAll($name, $values, $emulate = null)
+ * @method shift($name, $emulate = null)
+ * @method pop($name, $first, $emulate = null)
  */
 class Mongo_Subdocument implements ArrayAccess {
 
@@ -57,9 +56,10 @@ class Mongo_Subdocument implements ArrayAccess {
   protected $_reference;
 
   /**
-   * @param $document Document containing this subdocument
-   * @param $name Name of this subdocument (in dot notation). If it does not exist, it will be created. 
-   *              But it won't be saved until you change anything in it.
+   * @param Mongo_Document $document Document containing this subdocument
+   * @param string $name Name of this subdocument (in dot notation). If it does not exist, it will be created.
+   *                     But it won't be saved until you change anything in it.
+   * @param mixed $default
    */
   function __construct(Mongo_Document $document, $name, $default = array())
   {

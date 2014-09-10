@@ -25,7 +25,6 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
   {
     $this->db = Mongo_Database::instance('mongotest', array(
                 'database' => 'mongotest',
-//                    'profiling' => TRUE
             ));
 
     $this->db->createCollection('mongotest');
@@ -139,7 +138,6 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
   public function emulationProvider()
   {
     return [
-//            [ ['num' => 1], ['num' => 1, 'foo' => 'bar'], ['set', 'foo', 'bar'] ], // without dot notation set() acts inconsistently
         'set'       => [ ['num' => 1], ['num' => 1, 'foo' => ['bar' => 'baz']], ['set', 'foo.bar', 'baz']],
         'setdot'    => [ ['num' => 1], ['num' => 1, 'foo' => ['bar']], ['set', 'foo.0', 'bar']],
         'unset'     => [ ['num' => 1], [], ['_unset', 'num']],

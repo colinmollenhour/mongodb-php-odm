@@ -46,7 +46,6 @@ class MongoTest extends PHPUnit_Framework_TestCase {
   {
     $this->db = Mongo_Database::instance('mongotest', array(
                 'database' => 'mongotest',
-//                    'profiling' => TRUE
             ));
 
     $this->db->createCollection('mongotest');
@@ -55,7 +54,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
 
   protected function tearDown()
   {
-    
+
   }
 
   public function testCollection()
@@ -79,9 +78,6 @@ class MongoTest extends PHPUnit_Framework_TestCase {
       $this->assertGreaterThanOrEqual($last, $doc->name, "Failed sort $doc->name: $doc->number ($doc->id)");
       $last = $doc->name;
     }
-
-//        $col->count();
-//        $col->count(array('number' => array('$gt' => 10)));
   }
 
   public function testReference()
@@ -125,12 +121,10 @@ class MongoTest extends PHPUnit_Framework_TestCase {
             'foo' => array('bar' => 'baz'),
         ),
     );
-//        $this->out('BEFORE', $data);
     $doc = new Model_Test_Document();
     $doc->load_values($data);
     $doc->save();
     $this->assertTrue($doc->loaded(), 'document loaded after save');
-//        $this->out('AFTER', $doc->as_array());
     $this->assertNotNull($doc->id, '_id exists');
 
     $id = $doc->id;
@@ -166,7 +160,6 @@ class MongoTest extends PHPUnit_Framework_TestCase {
     $doc->load(array('name' => 'Bugs Bunny'));
     $this->assertFalse($doc->loaded(), 'document deleted');
 
-//        $this->test('INSERT Document WITH _id');
     $data = array('name'    => 'mongo', 'counter' => 10, 'set'     => array('foo', 'bar', 'baz'));
     $doc = new Model_Test_Document();
     $doc->id = 'test_doc';
@@ -181,7 +174,7 @@ class MongoTest extends PHPUnit_Framework_TestCase {
       $doc = new Model_Test_Document('nonexistent');
       $this->assertFalse($doc->load(), 'Document loaded, but it should not');
   }
-  
+
   /** @dataProvider emulationProvider  */
   public function testEmulation($data, $expected, $call)
   {
@@ -222,7 +215,6 @@ class MongoTest extends PHPUnit_Framework_TestCase {
   public function emulationProvider()
   {
     return [
-//            [ ['num' => 1], ['num' => 1, 'foo' => 'bar'], ['set', 'foo', 'bar'] ], // without dot notation set() acts inconsistently
         'set'       => [ ['num' => 1], ['num' => 1, 'foo' => ['bar' => 'baz']], ['set', 'foo.bar', 'baz']],
         'setdot'    => [ ['num' => 1], ['num' => 1, 'foo' => ['bar']], ['set', 'foo.0', 'bar']],
         'unset'     => [ ['num' => 1], [], ['_unset', 'num']],

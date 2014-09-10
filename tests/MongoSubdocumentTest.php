@@ -76,7 +76,7 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
   public function testIterate()
   {
     $doc = new Model_Test_Document();
-    $doc->array = [0, 1, 2, 3, 4, 5];
+    $doc->array = array(0, 1, 2, 3, 4, 5);
     $doc->save();
 
     $doc->load();
@@ -91,7 +91,7 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
 
     $doc->load();
 
-    $this->assertEquals([1, 2, 3, 4, 5, 6], $doc->array);
+    $this->assertEquals(array(1, 2, 3, 4, 5, 6), $doc->array);
   }
 
   /** @dataProvider emulationProvider  */
@@ -100,9 +100,9 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
     $data = array('sub' => $data);
     $expected = array('sub' => $expected);
 
-    foreach ([false, true] as $modelEmulation)
+    foreach (array(false, true) as $modelEmulation)
     {
-      foreach ([null, false, true] as $functionEmulation)
+      foreach (array(null, false, true) as $functionEmulation)
       {
         $emulation = $functionEmulation === null ? $modelEmulation : $functionEmulation;
 
@@ -119,7 +119,7 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
         $method = array_shift($args);
         $args[] = $functionEmulation;
         $sub = new Mongo_Subdocument($doc, 'sub');
-        call_user_func_array([$sub, $method], $args);
+        call_user_func_array(array($sub, $method), $args);
         if ($emulation)
         {
           $this->assertEquals($expected, $doc->as_array(), "Should be emulated (model:$modelEmulation, func:$functionEmulation, effective:$emulation)");
@@ -137,23 +137,23 @@ class MongoSubdocumentTest extends PHPUnit_Framework_TestCase {
 
   public function emulationProvider()
   {
-    return [
-        'set'       => [ ['num' => 1], ['num' => 1, 'foo' => ['bar' => 'baz']], ['set', 'foo.bar', 'baz']],
-        'setdot'    => [ ['num' => 1], ['num' => 1, 'foo' => ['bar']], ['set', 'foo.0', 'bar']],
-        'unset'     => [ ['num' => 1], [], ['_unset', 'num']],
-        'inc'       => [ ['num' => 1], ['num' => 3], ['inc', 'num', 2]],
-        'push'      => [ ['foo' => ['bar']], ['foo' => ['bar', 'baz']], ['push', 'foo', 'baz']],
-        'push2'     => [ ['foo' => ['bar']], ['foo' => ['bar', 'bar']], ['push', 'foo', 'bar']],
-        'push3'     => [ ['a' => 'b'], ['a'   => 'b', 'foo' => ['baz']], ['push', 'foo', 'baz']],
-        'pushAll'   => [ ['a' => 'b'], ['a'   => 'b', 'foo' => ['bar', 'baz']], ['pushAll', 'foo', ['bar', 'baz']]],
-        'pull'      => [ ['foo' => ['bar', 'baz']], ['foo' => ['bar']], ['pull', 'foo', 'baz']],
-        'pullAll'   => [ ['foo' => ['bar', 'baz']], ['foo' => []], ['pullAll', 'foo', ['bar', 'baz']]],
-        'pop'       => [ ['foo' => ['bar', 'baz']], ['foo' => ['bar']], ['pop', 'foo', true]],
-        'shift'     => [ ['foo' => ['bar', 'baz']], ['foo' => ['baz']], ['pop', 'foo', false]],
-        'shift2'    => [ ['foo' => ['bar', 'baz']], ['foo' => ['baz']], ['shift', 'foo']],
-        'addToSet'  => [ ['foo' => []], ['foo' => ['bar']], ['addToSet', 'foo', 'bar']],
-        'addToSet2' => [ ['foo' => ['bar']], ['foo' => ['bar']], ['addToSet', 'foo', 'bar']],
-    ];
+    return array(
+        'set'       => array(array('num' => 1), array('num' => 1, 'foo' => array('bar' => 'baz')), array('set', 'foo.bar', 'baz')),
+        'setdot'    => array(array('num' => 1), array('num' => 1, 'foo' => array('bar')), array('set', 'foo.0', 'bar')),
+        'unset'     => array(array('num' => 1), array(), array('_unset', 'num')),
+        'inc'       => array(array('num' => 1), array('num' => 3), array('inc', 'num', 2)),
+        'push'      => array(array('foo' => array('bar')), array('foo' => array('bar', 'baz')), array('push', 'foo', 'baz')),
+        'push2'     => array(array('foo' => array('bar')), array('foo' => array('bar', 'bar')), array('push', 'foo', 'bar')),
+        'push3'     => array(array('a' => 'b'), array('a' => 'b', 'foo' => array('baz')), array('push', 'foo', 'baz')),
+        'pushAll'   => array(array('a' => 'b'), array('a'   => 'b', 'foo' => array('bar', 'baz')), array('pushAll', 'foo', array('bar', 'baz'))),
+        'pull'      => array(array('foo' => array('bar', 'baz')), array('foo' => array('bar')), array('pull', 'foo', 'baz')),
+        'pullAll'   => array(array('foo' => array('bar', 'baz')), array('foo' => array()), array('pullAll', 'foo', array('bar', 'baz'))),
+        'pop'       => array(array('foo' => array('bar', 'baz')), array('foo' => array('bar')), array('pop', 'foo', true)),
+        'shift'     => array(array('foo' => array('bar', 'baz')), array('foo' => array('baz')), array('pop', 'foo', false)),
+        'shift2'    => array(array('foo' => array('bar', 'baz')), array('foo' => array('baz')), array('shift', 'foo')),
+        'addToSet'  => array(array('foo' => array()), array('foo' => array('bar')), array('addToSet', 'foo', 'bar')),
+        'addToSet2' => array(array('foo' => array('bar')), array('foo' => array('bar')), array('addToSet', 'foo', 'bar'))
+    );
   }
 
 }

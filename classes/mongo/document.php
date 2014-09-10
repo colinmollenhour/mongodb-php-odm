@@ -648,7 +648,8 @@ abstract class Mongo_Document implements ArrayAccess {
 
   /**
    * Reload document only if there is need for it
-   * @param $name Name of the field to check for (no dot notation)
+   * @param string $name Name of the field to check for (no dot notation)
+   * @return bool
    */
   protected function load_if_needed($name)
   {
@@ -681,7 +682,7 @@ abstract class Mongo_Document implements ArrayAccess {
    * @param string  $name  field name
    * @param mixed   $value
    * @throws Exception
-   * @return  void
+   * @return  mixed
    */
   public function __set($name, $value)
   {
@@ -1178,7 +1179,7 @@ abstract class Mongo_Document implements ArrayAccess {
   /**
    * Load the document from the database. The first parameter may be one of:
    *
-   *  a FALSEy value - the object data will be used to construct the query
+   *  a FALSE value - the object data will be used to construct the query
    *  a JSON string - will be parsed and used for the query
    *  an non-array value - the query will be assumed to be for an _id of this value
    *  an array - the array will be used for the query
@@ -1314,7 +1315,7 @@ abstract class Mongo_Document implements ArrayAccess {
       {
         if( ! $this->collection()->update(array('_id' => $this->_object['_id']), $this->_operations))
         {
-          $err = $this->db()->last_error();
+          $err = $this->db()->lastError();
           throw new MongoException('Update of '.get_class($this).' failed: '.$err['err']);
         }
       }
@@ -1339,7 +1340,7 @@ abstract class Mongo_Document implements ArrayAccess {
       {
         if( ! $this->collection()->update(array('_id' => $this->_object['_id']), $this->_operations))
         {
-          $err = $this->db()->last_error();
+          $err = $this->db()->lastError();
           throw new MongoException('Update of '.get_class($this).' failed: '.$err['err']);
         }
       }
@@ -1425,7 +1426,7 @@ abstract class Mongo_Document implements ArrayAccess {
 
     if( ! $this->collection()->update($this->_object, $operations, array('upsert' => TRUE)))
     {
-      $err = $this->db()->last_error();
+      $err = $this->db()->lastError();
       throw new MongoException('Upsert of '.get_class($this).' failed: '.$err['err']);
     }
 

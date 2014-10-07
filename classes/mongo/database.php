@@ -119,7 +119,7 @@ class Mongo_Database {
         $config = Kohana::$config->load('mongo')->$name;
       }
 
-      new self($name,$config);
+      new static($name,$config);
     }
 
     return self::$instances[$name];

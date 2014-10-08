@@ -96,7 +96,7 @@ class Mongo_Database {
    *
    * @param   string $name   The configuration name
    * @param   array $config  Pass a configuration array to bypass the Kohana config
-   * @param   $override      Overrides current instance with a new one (usefull for testing)
+   * @param   bool $override Overrides current instance with a new one (useful for testing)
    * @return  Mongo_Database
    * @static
    */

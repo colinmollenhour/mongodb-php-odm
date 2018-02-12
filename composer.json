@@ -4,7 +4,7 @@
     "name": "Colin Mollenhour",
     "url": "http://colin.mollenhour.com/"
   },
-  "license": "BSD",
+  "license": "BSD-3-Clause",
   "description": "MongoDb PHP ODM is a simple object wrapper for the Mongo PHP driver classes which makes using Mongo in your PHP application more like an ORM. It is designed for use with Kohana 3 but will integrate equally well with any PHP application.",
   "keywords": ["mongodb","mongo","php","odm","kohana"],
   "homepage": "https://github.com/colinmollenhour/mongodb-php-odm",
